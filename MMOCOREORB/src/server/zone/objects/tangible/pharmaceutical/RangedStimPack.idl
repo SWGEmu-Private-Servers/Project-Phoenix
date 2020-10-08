@@ -4,15 +4,19 @@
 
 package server.zone.objects.tangible.pharmaceutical;
 
+import server.zone.objects.tangible.TangibleObject;
+import server.zone.objects.scene.SceneObject;
+import server.zone.Zone;
+import engine.lua.LuaObject;
 import server.zone.packets.scene.AttributeListMessage;
+import server.zone.packets.object.ObjectMenuResponse;
 import server.zone.objects.creature.CreatureObject;
+import server.zone.objects.creature.CreatureObject;
+import server.zone.ZoneServer;
 import server.zone.objects.tangible.pharmaceutical.StimPack;
 include templates.tangible.RangedStimPackTemplate;
 include server.zone.objects.manufactureschematic.craftingvalues.CraftingValues;
-include templates.SharedObjectTemplate;
-include system.lang.String;
 
-@json
 class RangedStimPack extends StimPack {
 	protected float range;
 	protected float area;
@@ -72,7 +76,7 @@ class RangedStimPack extends StimPack {
 			return 0;
 		} else {
 			player.sendCommand("healdamage", String.valueOf(super.getObjectID()), player.getTargetID());
-
+			
 			return 0;
 		}
 	}
@@ -104,7 +108,7 @@ class RangedStimPack extends StimPack {
 		float power = getEffectiveness();
 
 		if (applyBattleFatigue) {
-			power *= patient.calculateBFRatio();
+			power = power - (power * patient.calculateBFRatio() * healer.calculateBFRatio());
 		}
 
 		float modSkill = (float) healer.getSkillMod("combat_medic_effectiveness");
@@ -120,7 +124,7 @@ class RangedStimPack extends StimPack {
 			modSkill = creature.getSkillMod("healing_range");
 		}
 
-		float value = (100 + rangeMod * modSkill) / 100 * range;
+		float value = (100 + rangeMod * modSkill) / 100 * range; 
 
 		return value;
 	}

@@ -8,6 +8,7 @@
 #ifndef COMPONENTAPPEARANCETEMPLATE_H_
 #define COMPONENTAPPEARANCETEMPLATE_H_
 
+#include "engine/engine.h"
 #include "templates/appearance/AppearanceTemplate.h"
 #include "templates/manager/TemplateManager.h"
 
@@ -85,7 +86,7 @@ public:
 
 			AppearanceTemplate* templ = TemplateManager::instance()->getAppearanceTemplate("appearance/" + meshFile);
 
-			if (templ == nullptr) {
+			if (templ == NULL) {
 				System::out << "Template not found appearance/" << meshFile;
 				continue;
 			}
@@ -138,7 +139,7 @@ public:
 	virtual bool intersects(const Ray& ray, float distance, float& intersectionDistance, Triangle*& triangle, bool checkPrimitives = false) const {
 
 		for(int i=0; i<meshes.size(); i++) {
-			const ComponentMeshAppearanceTemplate *mesh = meshes.getUnsafe(i);
+			const ComponentMeshAppearanceTemplate *mesh = meshes.get(i);
 
 			Vector3 start = ray.getOrigin() * mesh->getInverseTransform();
 			Vector3 end = ray.getDirection() * mesh->getInverseTransform();
@@ -166,14 +167,15 @@ public:
 			if(mesh->getMeshTemplate()->intersects(transformedRay, maxDistance, result))
 				return true;
 		}
-
+		
 		return false;
 	}
 
 	virtual Vector<Reference<MeshData* > > getTransformedMeshData(const Matrix4& parentTransform) const {
 		Vector<Reference<MeshData*> > transformedMeshData;
 		for(int i=0; i<meshes.size(); i++) {
-			const ComponentMeshAppearanceTemplate *mesh = meshes.get(i);
+
+			ComponentMeshAppearanceTemplate *mesh = meshes.get(i);
 
 			Matrix4 newMat = mesh->getTransform();
 			newMat.swapLtoR();

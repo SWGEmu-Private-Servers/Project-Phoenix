@@ -7,50 +7,55 @@
 
 #ifndef NAVMESHJOB_H_
 #define NAVMESHJOB_H_
-
-#include "server/zone/objects/pathfinding/NavArea.h"
+#include <functional>
+#include "engine/engine.h"
+#include "engine/core/LambdaFunction.h"
+#include "server/zone/objects/pathfinding/NavMeshRegion.h"
+#include "pathfinding/RecastNavMesh.h"
+#include "server/zone/Zone.h"
 #include "engine/util/u3d/AABB.h"
+
 
 class NavMeshJob : public Object {
 protected:
-	WeakReference<NavArea*> area;
+	ManagedWeakReference<NavMeshRegion*> region;
+	WeakReference<Zone*> zone;
 	Vector<AABB> areas;
 	RecastSettings settings;
-	String queue;
+	const String& queue;
 	AtomicBoolean running;
+	//Vector<LambdaFunction<std::function<void(NavmeshRegion*, const Vector<AABB>*)> > > functions;
 	Mutex mutex;
 
 public:
-	NavMeshJob(NavArea *area, const RecastSettings& config, const String& targetQueue) : queue(targetQueue), running(true)  {
-		this->area = area;
-		settings = config;
-	}
 
 	Vector<AABB>& getAreas() {
 		return areas;
 	}
 
-	const Vector<AABB>& getAreas() const {
-		return areas;
+	Reference<Zone*> getZone() {
+		return zone.get();
 	}
 
-	Reference<NavArea*> getNavArea() {
-		return area.get();
+	NavMeshRegion* getRegion() {
+		return region.get();
 	}
 
 	RecastSettings& getRecastConfig() {
 		return settings;
 	}
 
-	const RecastSettings& getRecastConfig() const {
-		return settings;
+	NavMeshJob(NavMeshRegion *region, Zone* zone, const RecastSettings& config, const String& targetQueue) : queue(targetQueue), running(true)  {
+		this->zone = zone;
+		this->region = region;
+		settings = config;
 	}
 
 	Mutex* getMutex() {
 		return &mutex;
 	}
 
-	const String& getQueue() const {
+	const String& getQueue() {
 	    return queue;
 	}
 

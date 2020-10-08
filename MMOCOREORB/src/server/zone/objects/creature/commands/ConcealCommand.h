@@ -10,19 +10,11 @@
 #include "server/zone/objects/creature/buffs/ConcealBuff.h"
 
 class ConcealCommand : public QueueCommand {
-
 public:
 
 	ConcealCommand(const String& name, ZoneProcessServer* server)
 		: QueueCommand(name, server) {
 
-	}
-
-	void doAnimations(CreatureObject* creature, CreatureObject* targetPlayer) const {
-		if (creature == targetPlayer)
-			creature->doAnimation("heal_self");
-		else
-			creature->doAnimation("heal_other");
 	}
 
 	int doQueueCommand(CreatureObject* creature, const uint64& target, const UnicodeString& arguments) const {
@@ -38,13 +30,12 @@ public:
 		uint32 crc = STRING_HASHCODE("skill_buff_mask_scent");
 
 		// Rangers can remove their own conceal buff by targeting nothing.
-		if(targetPlayer == nullptr && creature->hasBuff(crc)) {
-			creature->sendSystemMessage("@skl_use:sys_conceal_remove"); // You remove the camouflage. You are no longer concealed.
+		if(targetPlayer == NULL && creature->hasBuff(crc)) {
 			creature->removeBuff(crc);
 			return SUCCESS;
 		}
 
-		if(targetPlayer == nullptr || creature->getZone() == nullptr || !targetPlayer->isPlayerCreature()) {
+		if(targetPlayer == NULL || creature->getZone() == NULL || !targetPlayer->isPlayerCreature()) {
 			creature->sendSystemMessage("@skl_use:sys_conceal_notplayer"); // You can only conceal yourself or another player.
 			return INVALIDTARGET;
 		}
@@ -52,9 +43,6 @@ public:
 		Locker clocker(targetPlayer, creature);
 
 		if(!checkDistance(creature, targetPlayer, 10.0f)) {
-			StringIdChatParameter tooFar("cmd_err", "target_range_prose"); // Your target is too far away to %TO.
-			tooFar.setTO("conceal");
-			creature->sendSystemMessage(tooFar);
 			return GENERALERROR;
 		}
 
@@ -72,10 +60,10 @@ public:
 		SortedVector<QuadTreeEntry*> objects(512, 512);
 		CloseObjectsVector* closeObjectsVector = (CloseObjectsVector*) creature->getCloseObjects();
 
-		if (closeObjectsVector == nullptr) {
+		if (closeObjectsVector == NULL) {
 			creature->getZone()->getInRangeObjects(creature->getPositionX(), creature->getPositionY(), 32, &objects, true);
 		} else {
-			closeObjectsVector->safeCopyReceiversTo(objects, CloseObjectsVector::CREOTYPE);
+			closeObjectsVector->safeCopyTo(objects);
 		}
 
 		for (int i = 0; i < objects.size(); ++i) {
@@ -94,27 +82,27 @@ public:
 		String zoneName = creature->getZone()->getZoneName();
 
 		ManagedReference<SceneObject*> inventory = creature->getSlottedObject("inventory");
-		if(inventory == nullptr)
+		if(inventory == NULL)
 			return GENERALERROR;
 
-		ManagedReference<TangibleObject*> usableKit = nullptr;
+		ManagedReference<TangibleObject*> usableKit = NULL;
 
 		for(int i = 0; i < inventory->getContainerObjectsSize(); ++i) {
 			Reference<TangibleObject*> item = inventory->getContainerObject(i).castTo<TangibleObject*>();
 
-			if(item == nullptr || !item->isCamoKit())
+			if(item == NULL || !item->isCamoKit())
 				continue;
 
 			SharedObjectTemplate* templateData =
 					TemplateManager::instance()->getTemplate(
 							item->getServerObjectCRC());
-			if (templateData == nullptr) {
+			if (templateData == NULL) {
 				error("No template for: " + String::valueOf(item->getServerObjectCRC()));
 				return GENERALERROR;
 			}
 
 			CamoKitTemplate* camoKitData = cast<CamoKitTemplate*> (templateData);
-			if (camoKitData == nullptr) {
+			if (camoKitData == NULL) {
 				error("No camoKitData for: " + String::valueOf(camoKitData->getServerObjectCRC()));
 				return GENERALERROR;
 			}
@@ -127,7 +115,7 @@ public:
 			}
 		}
 
-		if(usableKit == nullptr) {
+		if(usableKit == NULL) {
 			creature->sendSystemMessage("@skl_use:sys_conceal_nokit"); // You need to have a Camouflage Kit in your inventory to Conceal.
 			return GENERALERROR;
 		}
@@ -137,10 +125,10 @@ public:
 
 		int camoMod = creature->getSkillMod("camouflage");
 		int cdReduction = ((float)(camoMod / 100.0f)) * 45;
-		int duration = 60 + (((float)(camoMod / 100.0f)) * 1440);
+		int duration = 60 + (((float)(camoMod / 100.0f)) * 200);
 
 
-		ManagedReference<ConcealBuff*> buff = new ConcealBuff(targetPlayer, creature, crc, duration, zoneName);
+		ManagedReference<ConcealBuff*> buff = new ConcealBuff(targetPlayer, creature, crc, duration);
 
 		Locker blocker(buff);
 
@@ -155,7 +143,6 @@ public:
 			creature->sendSystemMessage(param);
 		}
 
-		doAnimations(creature, targetPlayer);
 		targetPlayer->addBuff(buff);
 
 		blocker.release();

@@ -7,6 +7,7 @@
 
 #include "LuaTangibleObject.h"
 #include "server/zone/objects/tangible/TangibleObject.h"
+#include "templates/params/creature/CreatureFlag.h"
 #include "templates/params/PaletteColorCustomizationVariable.h"
 #include "templates/customization/AssetCustomizationManagerTemplate.h"
 #include "templates/appearance/PaletteTemplate.h"
@@ -57,7 +58,7 @@ LuaTangibleObject::LuaTangibleObject(lua_State *L) : LuaSceneObject(L) {
 #ifdef DYNAMIC_CAST_LUAOBJECTS
 	realObject = dynamic_cast<TangibleObject*>(_getRealSceneObject());
 
-	E3_ASSERT(!_getRealSceneObject() || realObject != nullptr);
+	assert(!_getRealSceneObject() || realObject != NULL);
 #else
 	realObject = static_cast<TangibleObject*>(lua_touserdata(L, 1));
 #endif
@@ -70,17 +71,11 @@ int LuaTangibleObject::_setObject(lua_State* L) {
 	LuaSceneObject::_setObject(L);
 
 #ifdef DYNAMIC_CAST_LUAOBJECTS
-	auto obj = dynamic_cast<TangibleObject*>(_getRealSceneObject());
+	realObject = dynamic_cast<TangibleObject*>(_getRealSceneObject());
 
-	if (realObject != obj)
-		realObject = obj;
-
-	E3_ASSERT(!_getRealSceneObject() || realObject != nullptr);
+	assert(!_getRealSceneObject() || realObject != NULL);
 #else
-	auto obj = static_cast<TangibleObject*>(lua_touserdata(L, -1));
-
-	if (realObject != obj)
-		realObject = obj;
+	realObject = static_cast<TangibleObject*>(lua_touserdata(L, -1));
 #endif
 
 	return 0;
@@ -106,26 +101,25 @@ int LuaTangibleObject::getPaletteColorCount(lua_State* L) {
 
 	int colors = 0;
 
-	for (int i = 0; i < variables.size(); ++i) {
-		const String& varkey = variables.elementAt(i).getKey();
+	for (int i = 0; i< variables.size(); ++i) {
+		String varkey = variables.elementAt(i).getKey();
 
 		if (varkey.contains(variableName)) {
 			CustomizationVariable* customizationVariable = variables.get(varkey).get();
 
-			if (customizationVariable == nullptr)
+			if (customizationVariable == NULL)
 				continue;
 
 			PaletteColorCustomizationVariable* palette = dynamic_cast<PaletteColorCustomizationVariable*>(customizationVariable);
 
-			if (palette != nullptr) {
-				const auto& paletteFileName = palette->getPaletteFileName();
-				UniqueReference<PaletteTemplate*> paletteTemplate(TemplateManager::instance()->getPaletteTemplate(paletteFileName));
+			if (palette != NULL) {
+				String paletteFileName = palette->getPaletteFileName();
+				PaletteTemplate* paletteTemplate = TemplateManager::instance()->getPaletteTemplate(paletteFileName);
 
-				if (paletteTemplate == nullptr)
+				if (paletteTemplate == NULL)
 					continue;
 
 				colors = paletteTemplate->getColorCount();
-
 				break;
 			}
 		}
@@ -169,7 +163,7 @@ int LuaTangibleObject::getPvpStatusBitmask(lua_State* L) {
 }
 
 int LuaTangibleObject::isChangingFactionStatus(lua_State* L) {
-	lua_pushboolean(L, realObject->getFutureFactionStatus() >= 0);
+	lua_pushboolean(L, realObject->getFutureFactionStatus() != 0);
 
 	return 1;
 }
@@ -202,8 +196,6 @@ int LuaTangibleObject::isCovert(lua_State* L) {
 
 int LuaTangibleObject::setConditionDamage(lua_State* L) {
 	float damage = lua_tonumber(L, -1);
-
-	Locker locker(realObject);
 
 	realObject->setConditionDamage(damage, true);
 

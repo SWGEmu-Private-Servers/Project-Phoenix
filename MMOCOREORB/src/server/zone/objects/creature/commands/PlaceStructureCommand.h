@@ -6,6 +6,7 @@
 #define PLACESTRUCTURECOMMAND_H_
 
 #include "server/zone/objects/creature/CreatureObject.h"
+#include "server/zone/objects/tangible/deed/Deed.h"
 #include "server/zone/objects/tangible/deed/structure/StructureDeed.h"
 
 class PlaceStructureCommand : public QueueCommand {
@@ -28,7 +29,7 @@ public:
 		if (!checkInvalidLocomotions(creature))
 			return INVALIDLOCOMOTION;
 
-		if (creature->getParent() != nullptr) {
+		if (creature->getParent() != NULL) {
 			creature->sendSystemMessage("@player_structure:not_inside"); //You can not place a structure while you are inside a building.
 			return GENERALERROR;
 		}
@@ -48,7 +49,7 @@ public:
 			// Validate player position -vs- attempted placement
 			Zone* zone = creature->getZone();
 
-			if (zone == nullptr)
+			if (zone == NULL)
 				return GENERALERROR;
 
 			Vector3 position(x, y, zone->getHeight(x, y));
@@ -83,7 +84,7 @@ public:
 		//We want to begin the session here.
 		ManagedReference<StructureDeed*> deed = server->getZoneServer()->getObject(deedID).castTo<StructureDeed*>();
 
-		if (deed != nullptr)
+		if (deed != NULL)
 			deed->placeStructure(creature, x, y, angle);
 
 		return SUCCESS;

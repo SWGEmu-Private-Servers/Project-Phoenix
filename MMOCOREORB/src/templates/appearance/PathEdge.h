@@ -8,9 +8,9 @@
 #ifndef PATHEDGE_H_
 #define PATHEDGE_H_
 
-#include "engine/util/iffstream/IffStream.h"
+#include "engine/engine.h"
 
-class PathEdge {
+class PathEdge : public Object  {
 	int from, to;
 
 	float laneWidthRight;
@@ -42,15 +42,6 @@ public:
 	inline float getLaneWidthLeft() const {
 		return laneWidthLeft;
 	}
-
-	bool toBinaryStream(ObjectOutputStream* stream) {
-		return false;
-	}
-
-	bool parseFromBinaryStream(ObjectInputStream* stream) {
-		return false;
-	}
-
 
 };
 

@@ -5,6 +5,7 @@
 #ifndef DISBANDCOMMAND_H_
 #define DISBANDCOMMAND_H_
 
+#include "server/zone/objects/scene/SceneObject.h"
 #include "server/zone/objects/group/GroupObject.h"
 #include "server/zone/managers/group/GroupManager.h"
 
@@ -28,7 +29,7 @@ public:
 
 		ManagedReference<GroupObject*> group = creature->getGroup();
 
-		if (group == nullptr)
+		if (group == NULL)
 			return GENERALERROR;
 
 		//If player not is leader, he will leave the group instead.
@@ -37,6 +38,7 @@ public:
 			groupManager->leaveGroup(group.get(), creature);
 		else
 			groupManager->disbandGroup(group.get(), creature);
+			creature->playEffect("clienteffect/pl_force_resist_disease_self.cef");
 
 		return SUCCESS;
 	}

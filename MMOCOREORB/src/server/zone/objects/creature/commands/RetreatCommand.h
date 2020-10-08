@@ -5,6 +5,7 @@
 #ifndef RETREATCOMMAND_H_
 #define RETREATCOMMAND_H_
 
+#include "server/zone/objects/scene/SceneObject.h"
 #include "SquadLeaderCommand.h"
 
 class RetreatCommand : public SquadLeaderCommand {
@@ -22,7 +23,7 @@ public:
 
 		Zone* zone = creature->getZone();
 
-		if (zone == nullptr) {
+		if (creature->getZone() == NULL) {
 			return false;
 		}
 
@@ -62,12 +63,12 @@ public:
 
 		ManagedReference<CreatureObject*> player = cast<CreatureObject*>(creature);
 
-		if (player == nullptr)
+		if (player == NULL)
 			return GENERALERROR;
 
 		ManagedReference<PlayerObject*> ghost = player->getPlayerObject();
 
-		if (ghost == nullptr)
+		if (ghost == NULL)
 			return GENERALERROR;
 
 		ManagedReference<GroupObject*> group = player->getGroup();
@@ -87,7 +88,7 @@ public:
 		for (int i = 1; i < group->getGroupSize(); ++i) {
 			ManagedReference<CreatureObject*> member = group->getGroupMember(i);
 
-			if (member == nullptr || !member->isPlayerCreature())
+			if (member == NULL || !member->isPlayerCreature() || member->getZone() != creature->getZone())
 				continue;
 
 			if (!isValidGroupAbilityTarget(creature, member, false))
@@ -112,7 +113,7 @@ public:
 
 
 	void doRetreat(CreatureObject* player) const {
-		if (player == nullptr)
+		if (player == NULL)
 			return;
 
 		if (!checkRetreat(player))

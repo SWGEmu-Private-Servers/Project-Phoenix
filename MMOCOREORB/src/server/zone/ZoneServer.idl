@@ -7,18 +7,24 @@ package server.zone;
 import server.zone.objects.scene.SceneObject;
 import engine.service.proto.BasePacketHandler;
 import engine.service.DatagramServiceThread;
+import engine.service.ServiceHandler;
+import engine.service.ServiceClient;
 import engine.service.Message;
 import engine.core.ManagedService;
+import engine.core.TaskManager;
 import engine.log.Logger;
 
 import system.lang.Exception;
 import system.lang.Time;
+import system.lang.ref.Reference;
+import system.util.Vector;
 import system.util.VectorMap;
 import system.net.Socket;
 import system.net.SocketAddress;
 import system.net.Packet;
 import system.thread.atomic.AtomicInteger;
 
+import server.login.account.Account;
 import server.zone.ZoneProcessServer;
 import server.zone.ZoneClientSession;
 import server.zone.ZoneHandler;
@@ -30,22 +36,22 @@ import server.zone.managers.player.PlayerManager;
 import server.zone.managers.objectcontroller.ObjectController;
 import server.zone.managers.radial.RadialManager;
 import server.zone.managers.reaction.ReactionManager;
-import server.zone.managers.frs.FrsManager;
 import server.zone.managers.skill.SkillManager;
 import server.zone.managers.resource.ResourceManager;
 import server.zone.managers.crafting.CraftingManager;
 import server.zone.managers.loot.LootManager;
 import server.zone.managers.auction.AuctionManager;
+import server.zone.managers.minigames.FishingManager;
 import server.zone.managers.mission.MissionManager;
+import server.zone.managers.minigames.GamblingManager;
+import server.zone.managers.minigames.ForageManager;
 import server.zone.managers.stringid.StringIdManager;
 import server.zone.managers.creature.CreatureTemplateManager;
 import server.zone.managers.creature.DnaManager;
 import server.zone.managers.creature.PetManager;
 import server.zone.managers.guild.GuildManager;
 import server.zone.managers.city.CityManager;
-import server.zone.managers.name.NameManager;
 
-@dirty
 class ZoneServer extends ManagedService implements Logger {
 	private transient DatagramServiceThread datagramService;
 
@@ -57,12 +63,11 @@ class ZoneServer extends ManagedService implements Logger {
 
 	private transient ZoneProcessServer processor;
 
-	private transient VectorMap<string, Zone> zones;
+	private VectorMap<string, Zone> zones;
 
 	private transient ObjectManager objectManager;
 	private PlayerManager playerManager;
 	private ReactionManager reactionManager;
-	private FrsManager frsManager;
 	private ChatManager chatManager;
 	private RadialManager radialManager;
 	private CityManager cityManager;
@@ -75,7 +80,7 @@ class ZoneServer extends ManagedService implements Logger {
 	private GuildManager guildManager;
 	private PetManager petManager;
 
-	private transient boolean deleteNavAreas;
+	private transient boolean deleteNavRegions;
 
 	private transient StringIdManager stringIdManager;
 
@@ -101,8 +106,7 @@ class ZoneServer extends ManagedService implements Logger {
 	@dereferenced
 	private AtomicInteger totalDeletedPlayers;
 
-	@dereferenced
-	private AtomicInteger serverState;
+	private int serverState;
 
 	private string galaxyName;
 	private string loginMessage;
@@ -224,12 +228,12 @@ class ZoneServer extends ManagedService implements Logger {
 	@dirty
 	public native void increaseTotalDeletedPlayers();
 
-	@read
+	@dirty
 	public int getGalaxyID() {
 		return galaxyID;
 	}
 
-	@read
+	@dirty
 	public string getGalaxyName() {
 		return galaxyName;
 	}
@@ -238,42 +242,41 @@ class ZoneServer extends ManagedService implements Logger {
 		galaxyName = name;
 	}
 
-	@read
+	@dirty
 	public boolean isServerLocked() {
-		return serverState.get() == LOCKED;
+		return serverState == LOCKED;
 	}
 
-	@read
+	@dirty
 	public boolean isServerOnline() {
-		return serverState.get() == ONLINE;
+		return serverState == ONLINE;
 	}
 
-	@read
+	@dirty
 	public boolean isServerOffline() {
-		return serverState.get() == OFFLINE;
+		return serverState == OFFLINE;
 	}
 
-	@read
+	@dirty
 	public boolean isServerLoading() {
-		return serverState.get() == LOADING;
+		return serverState == LOADING;
 	}
 
-	@read
+	@dirty
 	public boolean isServerShuttingDown() {
-		return serverState.get() == SHUTTINGDOWN;
+		return serverState == SHUTTINGDOWN;
 	}
 
-	@read
 	public int getServerCap() {
 		return serverCap;
 	}
 
-	@read
+	@dirty
 	public int getServerState() {
-		return serverState.get();
+		return serverState;
 	}
 
-	@read
+	@dirty
 	public Zone getZone(final string terrainName) {
 		return zones.get(terrainName);
 	}
@@ -288,22 +291,22 @@ class ZoneServer extends ManagedService implements Logger {
 		return zones.get(idx);
 	}
 
-	@read
+	@dirty
 	public int getZoneCount() {
 		return zones.size();
 	}
 
-	@read
+	@dirty
 	public int getMaxPlayers() {
 		return maximumPlayers.get();
 	}
 
-	@read
+	@dirty
 	public int getTotalPlayers() {
 		return totalPlayers.get();
 	}
 
-	@read
+	@dirty
 	public int getDeletedPlayers() {
 		return totalDeletedPlayers.get();
 	}
@@ -322,11 +325,6 @@ class ZoneServer extends ManagedService implements Logger {
 	@dirty
 	public ReactionManager getReactionManager() {
 		return reactionManager;
-	}
-
-	@dirty
-	public FrsManager getFrsManager() {
-		return frsManager;
 	}
 
 	@dirty
@@ -384,16 +382,12 @@ class ZoneServer extends ManagedService implements Logger {
 		return petManager;
 	}
 
+	//public native Account getAccount(unsigned int accountID);
+
 	@local
 	@dirty
 	public SkillManager getSkillManager() {
 		return processor.getSkillManager();
-	}
-
-	@local
-	@dirty
-	public NameManager getNameManager() {
-		return processor.getNameManager();
 	}
 
 	@local
@@ -407,16 +401,16 @@ class ZoneServer extends ManagedService implements Logger {
 	}
 
 	public void setServerState(int state) {
-		serverState.set(state);
+		serverState = state;
 	}
 
-	public void setShouldDeleteNavAreas(boolean b) {
-		deleteNavAreas = b;
+	public void setShouldDeleteNavRegions(boolean b) {
+		deleteNavRegions = b;
 	}
 
-	@read
-	public boolean shouldDeleteNavAreas() {
-		return deleteNavAreas;
+	@dirty
+	public boolean shouldDeleteNavRegions() {
+		return deleteNavRegions;
 	}
 
 	public native void setServerStateLocked();
@@ -428,6 +422,6 @@ class ZoneServer extends ManagedService implements Logger {
 	public native void loadLoginMessage();
 	public native void changeLoginMessage(final string motd);
 
-	@read
+	@dirty
 	public native string getLoginMessage();
 }

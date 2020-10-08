@@ -6,6 +6,7 @@
 #define FREEZEPLAYERCOMMAND_H_
 
 #include "server/zone/objects/scene/SceneObject.h"
+#include "templates/params/creature/CreatureState.h"
 
 class FreezePlayerCommand : public QueueCommand {
 public:
@@ -30,12 +31,12 @@ public:
 
 		ManagedReference<SceneObject* > object = server->getZoneServer()->getObject(target);
 
-		ManagedReference<CreatureObject* > targetPlayer = nullptr;
+		ManagedReference<CreatureObject* > targetPlayer = NULL;
 		CreatureObject* player = cast<CreatureObject*>(creature);
 		StringTokenizer args(arguments.toString());
 		StringBuffer fullReason;
 
-		if (object == nullptr || !object->isPlayerCreature()) {
+		if (object == NULL || !object->isPlayerCreature()) {
 
 			String firstName;
 			if (args.hasMoreTokens()) {
@@ -47,14 +48,14 @@ public:
 			targetPlayer = cast<CreatureObject*>( object.get());
 		}
 
-		if (targetPlayer == nullptr) {
+		if (targetPlayer == NULL) {
 			player->sendSystemMessage(syntaxerror);
 			return INVALIDPARAMETERS;
 		}
 
 		ManagedReference<PlayerObject*> targetGhost = targetPlayer->getPlayerObject();
 
-		if (targetGhost == nullptr) {
+		if (targetGhost == NULL) {
 			player->sendSystemMessage(syntaxerror);
 			return INVALIDPARAMETERS;
 		}
@@ -74,8 +75,13 @@ public:
 			targetPlayer->setSpeedMultiplierBase(0.f, true);
 
 			if(fullReason.toString().isEmpty()) {
-				targetPlayer->sendSystemMessage("You have been frozen and muted by " + player->getFirstName() + ".");
+				//targetPlayer->sendSystemMessage("You have been frozen and muted by " + player->getFirstName() + ".");
 				player->sendSystemMessage(targetPlayer->getFirstName() + " is now frozen and muted.");
+				targetPlayer->playEffect("clienteffect/item_ring_hero_mark.cef");
+				targetPlayer->playEffect("clienteffect/droid_effect_foam.cef");
+				targetPlayer->sendSystemMessage("You have been frozen and muted by " + player->getFirstName() + ".");
+				targetPlayer->sendSystemMessage("You will be unfrozen when the staff is done.");
+				targetPlayer->setPosture(CreaturePosture::CROUCHED);
 			} else {
 				String reason = fullReason.toString();
 				targetGhost->setMutedReason(reason);

@@ -9,13 +9,15 @@
 #include "server/zone/packets/object/ObjectMenuResponse.h"
 #include "server/zone/objects/creature/CreatureObject.h"
 #include "server/zone/objects/player/PlayerObject.h"
+#include "server/zone/objects/intangible/VehicleControlDevice.h"
 #include "server/zone/Zone.h"
 #include "server/zone/objects/player/sui/listbox/SuiListBox.h"
+#include "server/zone/managers/planet/PlanetManager.h"
 #include "server/zone/managers/structure/StructureManager.h"
 #include "server/zone/objects/area/ActiveArea.h"
 #include "server/zone/objects/region/CityRegion.h"
-#include "server/zone/objects/region/Region.h"
 #include "server/zone/objects/creature/sui/RepairVehicleSuiCallback.h"
+#include "server/zone/objects/region/CityRegion.h"
 #include "templates/customization/AssetCustomizationManagerTemplate.h"
 
 
@@ -71,7 +73,7 @@ void VehicleObjectImplementation::fillAttributeList(AttributeListMessage* alm, C
 	alm->insertAttribute("cat_armor_effectiveness.armor_eff_elemental_electrical", ele.toString());
 
 	ManagedReference<CreatureObject* > linkedCreature = this->linkedCreature.get();
-	if( linkedCreature == nullptr )
+	if( linkedCreature == NULL )
 		return;
 
 	alm->insertAttribute("@obj_attr_n:owner", linkedCreature->getFirstName());
@@ -81,11 +83,11 @@ void VehicleObjectImplementation::fillAttributeList(AttributeListMessage* alm, C
 void VehicleObjectImplementation::notifyInsertToZone(Zone* zone) {
 	SceneObjectImplementation::notifyInsertToZone(zone);
 
-	if( this->linkedCreature == nullptr )
+	if( this->linkedCreature == NULL )
 		return;
 
 	ManagedReference<CreatureObject* > linkedCreature = this->linkedCreature.get();
-	if( linkedCreature == nullptr )
+	if( linkedCreature == NULL )
 		return;
 
 	// Decay customized paint (if any)
@@ -121,7 +123,7 @@ void VehicleObjectImplementation::notifyInsertToZone(Zone* zone) {
 bool VehicleObjectImplementation::checkInRangeGarage() {
 	Reference<SceneObject*> garage = StructureManager::instance()->getInRangeParkingGarage(_this.getReferenceUnsafeStaticCast());
 
-	if (garage == nullptr)
+	if (garage == NULL)
 		return false;
 
 	return true;
@@ -135,7 +137,7 @@ int VehicleObjectImplementation::handleObjectMenuSelect(CreatureObject* player, 
 		try {
 			ManagedReference<ControlDevice* > strongRef = controlDevice.get();
 
-			if (strongRef != nullptr)
+			if (strongRef != NULL)
 				strongRef->storeObject(player);
 		} catch (Exception& e) {
 
@@ -153,38 +155,25 @@ int VehicleObjectImplementation::handleObjectMenuSelect(CreatureObject* player, 
 	return 0;
 }
 
-void VehicleObjectImplementation::sendMessage(BasePacket* msg) {
-	ManagedReference<CreatureObject* > linkedCreature = this->linkedCreature.get();
-
-	if (linkedCreature != nullptr && linkedCreature->getParent().get() == _this.getReferenceUnsafeStaticCast())
-		linkedCreature->sendMessage(msg);
-	else {
-#ifdef LOCKFREE_BCLIENT_BUFFERS
-		if (!msg->getReferenceCount())
-#endif
-			delete msg;
-	}
-}
-
 void VehicleObjectImplementation::repairVehicle(CreatureObject* player) {
 	if (!player->getPlayerObject()->isPrivileged()) {
 		//Need to check if they are city banned.
-
+		
 		ManagedReference<ActiveArea*> activeArea = getActiveRegion();
 
-		if (activeArea != nullptr && activeArea->isRegion()) {
+		if (activeArea != NULL && activeArea->isRegion()) {
 			Region* region = cast<Region*>( activeArea.get());
 
-			ManagedReference<CityRegion*> gb = region->getCityRegion().get();
-
-			if (gb == nullptr)
+			ManagedReference<CityRegion*> gb = region->getCityRegion();
+			
+			if (gb == NULL)
 				return;
 
 			if (gb->isBanned(player->getObjectID()))  {
 				player->sendSystemMessage("@city/city:garage_banned"); //You are city banned and cannot use this garage.
 				return;
 			}
-
+		
 
 		if (getConditionDamage() == 0) {
 			player->sendSystemMessage("@pet/pet_menu:undamaged_vehicle"); //The targeted vehicle does not require any repairs at the moment.
@@ -201,13 +190,13 @@ void VehicleObjectImplementation::repairVehicle(CreatureObject* player) {
 			return;
 			}
 		}
-	}
+	}	
 	sendRepairConfirmTo(player);
 }
 
 void VehicleObjectImplementation::sendRepairConfirmTo(CreatureObject* player) {
 	ManagedReference<SuiListBox*> listbox = new SuiListBox(player, SuiWindowType::GARAGE_REPAIR);
-    listbox->setCallback(new RepairVehicleSuiCallback(getZoneServer()));
+    listbox->setCallback(new RepairVehicleSuiCallback(server->getZoneServer()));
 	listbox->setPromptTitle("@pet/pet_menu:confirm_repairs_t"); //Confirm Vehicle Repairs
 	listbox->setPromptText("@pet/pet_menu:vehicle_repair_d"); //You have chosen to repair your vehicle. Please review the listed details and confirm your selection.
 	listbox->setUsingObject(_this.getReferenceUnsafeStaticCast());
@@ -217,8 +206,8 @@ void VehicleObjectImplementation::sendRepairConfirmTo(CreatureObject* player) {
 	int totalFunds = player->getBankCredits();
 	int tax = 0;
 
-	ManagedReference<CityRegion*> city = getCityRegion().get();
-	if(city != nullptr && city->getGarageTax() > 0){
+	ManagedReference<CityRegion*> city = getCityRegion();
+	if(city != NULL && city->getGarageTax() > 0){
 		repairCost += repairCost * city->getGarageTax() / 100;
 	}
 
@@ -254,7 +243,7 @@ int VehicleObjectImplementation::notifyObjectDestructionObservers(TangibleObject
 
 	ManagedReference<CreatureObject* > linkedCreature = this->linkedCreature.get();
 
-	if (linkedCreature != nullptr) {
+	if (linkedCreature != NULL) {
 		if (!isDisabled())
 			linkedCreature->sendSystemMessage("@pet/pet_menu:veh_disabled");
 
@@ -285,10 +274,12 @@ int VehicleObjectImplementation::notifyObjectDestructionObservers(TangibleObject
 	return CreatureObjectImplementation::notifyObjectDestructionObservers(attacker, condition, false);
 }
 
-bool VehicleObject::isVehicleObject() {
-	return true;
+void VehicleObjectImplementation::sendMessage(BasePacket* msg) {
+	ManagedReference<CreatureObject* > linkedCreature = this->linkedCreature.get();
+
+	if (linkedCreature != NULL && linkedCreature->getParent().get() == _this.getReferenceUnsafeStaticCast())
+		linkedCreature->sendMessage(msg);
+	else
+		delete msg;
 }
 
-bool VehicleObjectImplementation::isVehicleObject() {
-	return true;
-}

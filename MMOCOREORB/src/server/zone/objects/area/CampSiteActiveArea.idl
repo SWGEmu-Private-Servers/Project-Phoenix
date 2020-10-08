@@ -15,12 +15,10 @@ import server.zone.objects.area.events.CampDespawnTask;
 import server.zone.objects.area.events.CampAbandonTask;
 include templates.building.CampStructureTemplate;
 include system.thread.Mutex;
+import system.lang.ref.Reference;
 import system.lang.Time;
 include templates.TemplateReference;
-include system.lang.System;
-include system.util.Vector;
 
-@json
 class CampSiteActiveArea extends ActiveArea {
 
 	protected StructureObject camp;
@@ -35,8 +33,8 @@ class CampSiteActiveArea extends ActiveArea {
 
 	protected CampSiteObserver campObserver;
 
-	protected transient CampAbandonTask abandonTask;
-	protected transient CampDespawnTask despawnTask;
+	protected CampAbandonTask abandonTask;
+	protected CampDespawnTask despawnTask;
 
 	protected CreatureObject campOwner;
 
@@ -149,7 +147,7 @@ class CampSiteActiveArea extends ActiveArea {
 
 	@preLocked
 	public native void abandonCamp();
-
+	
 	@preLocked
 	public native void setAbandoned(boolean isAbandoned);
 

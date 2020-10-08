@@ -3,17 +3,20 @@
 		See file COPYING for copying conditions.
 */
 
+#include "server/zone/objects/scene/components/ContainerComponent.h"
 #include "SaberInventoryContainerComponent.h"
 #include "server/zone/objects/scene/SceneObject.h"
+#include "server/zone/Zone.h"
 #include "server/zone/objects/creature/CreatureObject.h"
+#include "server/zone/objects/player/PlayerObject.h"
 #include "server/zone/objects/tangible/weapon/WeaponObject.h"
 #include "server/zone/objects/tangible/component/lightsaber/LightsaberCrystalComponent.h"
 
 int SaberInventoryContainerComponent::canAddObject(SceneObject* sceneObject, SceneObject* object, int containmentType, String& errorDescription) const {
 
-	ManagedReference<SceneObject*> p = sceneObject->getParent().get();
+	ManagedReference<SceneObject*> p = sceneObject->getParent();
 
-	if (p != nullptr){
+	if (p != NULL){
 		int containment = p->getContainmentType();
 
 		if (containment == 4) {
@@ -34,9 +37,9 @@ int SaberInventoryContainerComponent::canAddObject(SceneObject* sceneObject, Sce
 		return TransferErrorCode::INVALIDTYPE;
 	}
 
-	ManagedReference<CreatureObject*> creature = crystal->getParentRecursively(SceneObjectType::PLAYERCREATURE).castTo<CreatureObject*>();
+	ManagedReference<CreatureObject*> creature = cast<CreatureObject*>(crystal->getParentRecursively(SceneObjectType::PLAYERCREATURE).get().get());
 
-	if (creature == nullptr || crystal->getOwnerID() != creature->getObjectID()){
+	if (creature == NULL || crystal->getOwnerID() != creature->getObjectID()){
 		errorDescription = "@jedi_spam:saber_crystal_not_owner";
 		return TransferErrorCode::INVALIDTYPE;
 	}
@@ -46,15 +49,17 @@ int SaberInventoryContainerComponent::canAddObject(SceneObject* sceneObject, Sce
 		return TransferErrorCode::INVALIDTYPE;
 	}
 
-	if (sceneObject->getContainerObjectsSize() >= sceneObject->getContainerVolumeLimit()) {
+	VectorMap<uint64, ManagedReference<SceneObject*> >* containerObjects = sceneObject->getContainerObjects();
+
+	if (containerObjects->size() >= sceneObject->getContainerVolumeLimit()) {
 		errorDescription = "@container_error_message:container03"; //This container is full.
 		return TransferErrorCode::CONTAINERFULL;
 	}
 
-	for (int i = 0; i < sceneObject->getContainerObjectsSize(); i++) {
+	for (int i = 0; i < containerObjects->size(); i++){
 		Reference<LightsaberCrystalComponent*> crystalInside =  sceneObject->getContainerObject(i).castTo<LightsaberCrystalComponent*>();
 
-		if (crystal->getColor() != 31 && crystalInside->getColor() != 31) {
+		if (crystal->getColor() != 31 && crystalInside->getColor() != 31){
 				errorDescription = "@jedi_spam:saber_already_has_color";
 				return TransferErrorCode::INVALIDTYPE;
 		}
@@ -74,10 +79,10 @@ int SaberInventoryContainerComponent::notifyObjectInserted(SceneObject* sceneObj
 
 	if (weao->isJediWeapon()) {
 		ManagedReference<LightsaberCrystalComponent*> crystal = cast<LightsaberCrystalComponent*>( object);
-		if (crystal->getColor() == 31){
+		if (crystal->getColor() == 31) {
 			weao->setAttackSpeed(weao->getAttackSpeed() + crystal->getAttackSpeed());
-			weao->setMinDamage(weao->getMinDamage() + crystal->getDamage());
-			weao->setMaxDamage(weao->getMaxDamage() + crystal->getDamage());
+			weao->setMinDamage(weao->getMinDamage() + MIN(MAX(crystal->getMinimumDamage(), 0), 100));
+			weao->setMaxDamage(weao->getMaxDamage() + MIN(MAX(crystal->getMaximumDamage(), 0), 200));
 			weao->setHealthAttackCost(weao->getHealthAttackCost() + crystal->getSacHealth());
 			weao->setActionAttackCost(weao->getActionAttackCost() + crystal->getSacAction());
 			weao->setMindAttackCost(weao->getMindAttackCost() + crystal->getSacMind());
@@ -89,6 +94,8 @@ int SaberInventoryContainerComponent::notifyObjectInserted(SceneObject* sceneObj
 			int color = crystal->getColor();
 			weao->setBladeColor(color);
 			weao->setCustomizationVariable("/private/index_color_blade", color, true);
+			weao->setMinDamage(weao->getMinDamage() + MIN(MAX(crystal->getMinimumDamage(), 0), 100));
+			weao->setMaxDamage(weao->getMaxDamage() + MIN(MAX(crystal->getMaximumDamage(), 0), 200));
 		}
 	}
 
@@ -113,8 +120,8 @@ int SaberInventoryContainerComponent::notifyObjectRemoved(SceneObject* sceneObje
 
 			if (crystal->getColor() == 31){
 				weao->setAttackSpeed(weao->getAttackSpeed() - crystal->getAttackSpeed());
-				weao->setMinDamage(weao->getMinDamage() - crystal->getDamage());
-				weao->setMaxDamage(weao->getMaxDamage() - crystal->getDamage());
+				weao->setMinDamage(weao->getMinDamage() - MIN(MAX(crystal->getMinimumDamage(), 0), 100));
+				weao->setMaxDamage(weao->getMaxDamage() - MIN(MAX(crystal->getMaximumDamage(), 0), 200));
 				weao->setHealthAttackCost(weao->getHealthAttackCost() - crystal->getSacHealth());
 				weao->setActionAttackCost(weao->getActionAttackCost() - crystal->getSacAction());
 				weao->setMindAttackCost(weao->getMindAttackCost() - crystal->getSacMind());
@@ -125,6 +132,8 @@ int SaberInventoryContainerComponent::notifyObjectRemoved(SceneObject* sceneObje
 			if (crystal->getColor() != 31) {
 				weao->setBladeColor(31);
 				weao->setCustomizationVariable("/private/index_color_blade", 31, true);
+				weao->setMinDamage(weao->getMinDamage() - MIN(MAX(crystal->getMinimumDamage(), 0), 100));
+				weao->setMaxDamage(weao->getMaxDamage() - MIN(MAX(crystal->getMaximumDamage(), 0), 200));
 			}
 		}
 
@@ -133,15 +142,16 @@ int SaberInventoryContainerComponent::notifyObjectRemoved(SceneObject* sceneObje
 
 bool SaberInventoryContainerComponent::checkContainerPermission(SceneObject* sceneObject, CreatureObject* creature, uint16 permission) const {
 	ManagedReference<WeaponObject*> saber = cast<WeaponObject*>( sceneObject->getParent().get().get());
+	ManagedReference<PlayerObject*> admin = creature->getPlayerObject();
 
-	if (saber == nullptr)
+	if (saber == NULL)
 		return false;
 
 
-	if (saber->isJediWeapon() && saber->isEquipped()) {
-		ManagedReference<CreatureObject*> player = saber->getParentRecursively(SceneObjectType::PLAYERCREATURE).castTo<CreatureObject*>();
+	if (saber->isJediWeapon() && saber->isEquipped() && admin->getAdminLevel() < 10) {
+		CreatureObject* player = saber->getParentRecursively(SceneObjectType::PLAYERCREATURE).get().castTo<CreatureObject*>();
 
-		if (player == nullptr)
+		if (player == NULL)
 			return false;
 
 		player->sendSystemMessage("@jedi_spam:saber_not_while_equpped"); // You cannot modify the crystals in this lightsaber while it is equipped.

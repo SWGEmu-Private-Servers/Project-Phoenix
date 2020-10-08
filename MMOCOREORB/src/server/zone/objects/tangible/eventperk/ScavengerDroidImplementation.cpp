@@ -6,7 +6,9 @@
 #include "server/zone/objects/player/PlayerObject.h"
 #include "server/zone/packets/object/ObjectMenuResponse.h"
 #include "server/zone/objects/player/sui/listbox/SuiListBox.h"
+#include "server/zone/objects/player/sui/inputbox/SuiInputBox.h"
 #include "server/zone/objects/player/sui/messagebox/SuiMessageBox.h"
+#include "server/zone/objects/tangible/tasks/RemoveEventPerkItemTask.h"
 #include "server/zone/objects/tangible/deed/eventperk/EventPerkDeed.h"
 #include "templates/tangible/EventPerkDeedTemplate.h"
 #include "server/zone/objects/tangible/components/EventPerkDataComponent.h"
@@ -27,10 +29,10 @@ void ScavengerDroidImplementation::updatePlayerScore(CreatureObject* player) {
 
 	ManagedReference<CreatureObject*> curWinner = currentWinner.get();
 
-	if (curWinner != nullptr)
+	if (curWinner != NULL)
 		leaderScore = getTurnedInItemListSize(curWinner->getObjectID());
 
-	if (curWinner == nullptr || curWinner == player || playerScore >= leaderScore) {
+	if (curWinner == NULL || curWinner == player || playerScore >= leaderScore) {
 		player->sendSystemMessage("@event_perk:scavenger_you_lead");
 		currentWinner = player;
 	} else {
@@ -46,10 +48,10 @@ void ScavengerDroidImplementation::announceToPlayers(const String& message) {
 
 	for (int i = 0; i < closeObjects.size(); i++) {
 		SceneObject* targetObject = cast<SceneObject*>(closeObjects.get(i).get());
-		if (targetObject != nullptr && targetObject->isPlayerCreature()) {
+		if (targetObject != NULL && targetObject->isPlayerCreature()) {
 			ManagedReference<CreatureObject*> player = cast<CreatureObject*>(targetObject);
 
-			if (player != nullptr)
+			if (player != NULL)
 				player->sendSystemMessage("@event_perk:" + message);
 		}
 	}
@@ -57,15 +59,15 @@ void ScavengerDroidImplementation::announceToPlayers(const String& message) {
 
 void ScavengerDroidImplementation::addToPlayerItemList(uint64 playerID, const String& item) {
 	if (!turnedInItemList.contains(playerID))
-		turnedInItemList.put(playerID, Vector<String>());
+		turnedInItemList.put(playerID, new Vector<String>());
 
-	turnedInItemList.get(playerID).add(item);
+	turnedInItemList.get(playerID)->add(item);
 }
 
 int ScavengerDroidImplementation::handleObjectMenuSelect(CreatureObject* player, byte selectedID) {
 	ManagedReference<CreatureObject*> perkOwner = getDeedOwner();
 
-	bool isOwner = perkOwner != nullptr && player == perkOwner;
+	bool isOwner = perkOwner != NULL && player == perkOwner;
 
 
 	if (gameStatus == GAMESETUP && isOwner) {
@@ -89,7 +91,7 @@ int ScavengerDroidImplementation::handleObjectMenuSelect(CreatureObject* player,
 
 			ManagedReference<CreatureObject*> curWinner = currentWinner.get();
 
-			if (curWinner == nullptr)
+			if (curWinner == NULL)
 				msg.setTO("Nobody");
 			else
 				msg.setTO(curWinner->getDisplayedName());
@@ -103,7 +105,7 @@ int ScavengerDroidImplementation::handleObjectMenuSelect(CreatureObject* player,
 
 			int timeMins = (gameEndTime.getMiliTime() - gameStartTime.getMiliTime()) / 60000;
 
-			if (curWinner != nullptr)
+			if (curWinner != NULL)
 				msg.setTO(curWinner->getDisplayedName());
 			else
 				msg.setTO("Unknown");
@@ -113,18 +115,18 @@ int ScavengerDroidImplementation::handleObjectMenuSelect(CreatureObject* player,
 		}
 	}
 
-	if (selectedID == 137 && (isOwner || (player->getPlayerObject() != nullptr && player->getPlayerObject()->isPrivileged()))) {
+	if (selectedID == 137 && (isOwner || (player->getPlayerObject() != NULL && player->getPlayerObject()->isPrivileged()))) {
 		EventPerkDataComponent* data = cast<EventPerkDataComponent*>(getDataObjectComponent()->get());
 
-		if (data == nullptr) {
+		if (data == NULL) {
 			player->sendSystemMessage("Error: no dataObjectComponent.");
 			return 1;
 		}
 
 		EventPerkDeed* deed = data->getDeed();
 
-		if (deed == nullptr) {
-			player->sendSystemMessage("Error: deed is nullptr.");
+		if (deed == NULL) {
+			player->sendSystemMessage("Error: deed is NULL.");
 			return 1;
 		}
 
@@ -144,7 +146,7 @@ int ScavengerDroidImplementation::handleObjectMenuSelect(CreatureObject* player,
 void ScavengerDroidImplementation::fillObjectMenuResponse(ObjectMenuResponse* menuResponse, CreatureObject* player) {
 	ManagedReference<CreatureObject*> perkOwner = getDeedOwner();
 
-	if (perkOwner == nullptr)
+	if (perkOwner == NULL)
 		return;
 
 	if (gameStatus == GAMESETUP && perkOwner == player) {
@@ -160,7 +162,7 @@ void ScavengerDroidImplementation::fillObjectMenuResponse(ObjectMenuResponse* me
 		menuResponse->addRadialMenuItem(136, 3, "@event_perk:scavenger_show_winner"); // Display Winner
 	}
 
-	if (perkOwner == player || (player->getPlayerObject() != nullptr && player->getPlayerObject()->isPrivileged()))
+	if (perkOwner == player || (player->getPlayerObject() != NULL && player->getPlayerObject()->isPrivileged()))
 		menuResponse->addRadialMenuItem(137, 3, "@event_perk:mnu_show_exp_time"); // Show Expiration Time
 }
 
@@ -181,7 +183,7 @@ void ScavengerDroidImplementation::startGame(CreatureObject* player) {
 void ScavengerDroidImplementation::sendItemListSUI(CreatureObject* player) {
 	PlayerObject* ghost = player->getPlayerObject();
 
-	if (ghost == nullptr)
+	if (ghost == NULL)
 		return;
 
 	if (itemList.size() == 0) {
@@ -208,7 +210,7 @@ void ScavengerDroidImplementation::sendItemListSUI(CreatureObject* player) {
 void ScavengerDroidImplementation::sendSetupInstructionsSUI(CreatureObject* player) {
 	PlayerObject* ghost = player->getPlayerObject();
 
-	if (ghost == nullptr)
+	if (ghost == NULL)
 		return;
 
 	ManagedReference<SuiMessageBox*> msgBox = new SuiMessageBox(player, SuiWindowType::SCAVENGER_INFO);
@@ -224,7 +226,7 @@ void ScavengerDroidImplementation::sendSetupInstructionsSUI(CreatureObject* play
 void ScavengerDroidImplementation::sendGameInstructionsSUI(CreatureObject* player) {
 	PlayerObject* ghost = player->getPlayerObject();
 
-	if (ghost == nullptr)
+	if (ghost == NULL)
 		return;
 
 	ManagedReference<SuiMessageBox*> msgBox = new SuiMessageBox(player, SuiWindowType::SCAVENGER_INFO);
@@ -240,31 +242,17 @@ void ScavengerDroidImplementation::sendGameInstructionsSUI(CreatureObject* playe
 CreatureObject* ScavengerDroidImplementation::getDeedOwner() {
 	EventPerkDataComponent* gameData = cast<EventPerkDataComponent*>(getDataObjectComponent()->get());
 
-	if (gameData == nullptr) {
-		return nullptr;
+	if (gameData == NULL) {
+		return NULL;
 	}
 
 	ManagedReference<EventPerkDeed*> deed = gameData->getDeed();
 
-	if (deed == nullptr) {
-		return nullptr;
+	if (deed == NULL) {
+		return NULL;
 	}
 
 	ManagedReference<CreatureObject*> owner = deed->getOwner().get();
 
 	return owner;
-}
-
-bool ScavengerDroidImplementation::hasItemInPlayerItemList(uint64 playerID, const String& item) {
-	if (!turnedInItemList.contains(playerID))
-		return false;
-
-	return turnedInItemList.get(playerID).contains(item);
-}
-
-int ScavengerDroidImplementation::getTurnedInItemListSize(uint64 playerID) {
-	if (!turnedInItemList.contains(playerID))
-		return 0;
-
-	return turnedInItemList.get(playerID).size();
 }

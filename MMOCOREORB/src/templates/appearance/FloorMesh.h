@@ -13,11 +13,9 @@
 #include "templates/appearance/PathNode.h"
 #include "templates/appearance/PathGraph.h"
 
-//#define RENDER_EXTERNAL_FLOOR_MESHES_ONLY
+class PortalLayout;
 
-class MeshData;
-
-class EdgeID {
+class EdgeID : public Object {
 	int triangleID;
 	int edgeID;
 public:
@@ -25,19 +23,17 @@ public:
 		this->triangleID = triangleID;
 		this->edgeID = edgeID;
 	}
-
 	EdgeID() {
 		triangleID = -1;
 		edgeID = -1;
 	}
-
-	EdgeID(const EdgeID& edge) {
+	EdgeID(const EdgeID& edge) : Object(edge) {
 		triangleID = edge.triangleID;
 		edgeID = edge.edgeID;
 	}
 
-	inline int getEdgeID() const { return edgeID; }
-	inline int getTriangleID() const { return triangleID; }
+	inline int getEdgeID() { return edgeID; }
+	inline int getTriangleID() { return triangleID; }
 
 	int compareTo(const EdgeID& rhs) const {
 		if(triangleID == rhs.triangleID) {
@@ -53,18 +49,51 @@ public:
 			return -1;
 		}
 	}
+};
+class Vert : public Object {
+	float x, z, y;
 
-	bool toBinaryStream(ObjectOutputStream* stream) {
-		return false;
+public:
+	Vert() {
+		x = z = y = 0;
 	}
 
-	bool parseFromBinaryStream(ObjectInputStream* stream) {
-		return false;
+	Vert(const Vert& v) : Object() {
+		x = v.x;
+		z = v.z;
+		y = v.y;
 	}
 
+	Vert(float px, float py, float pz) {
+		x = px;
+		y = py;
+		z = pz;
+	}
+
+	void readObject(IffStream* iffStream) {
+		x = iffStream->getFloat();
+		y = iffStream->getFloat();
+		z = iffStream->getFloat();
+	}
+
+	inline float getX() {
+		return x;
+	}
+
+	inline float getY() {
+		return y;
+	}
+
+	inline float getZ() {
+		return z;
+	}
+
+	inline Vector3 getPosition() {
+		return Vector3(x, y, z);
+	}
 };
 
-class Nods {
+class Nods  : public Object {
 	float x0, y0, z0, x1, y1, z1;
 	int id, var2, leftNode, rightNode;
 
@@ -88,18 +117,9 @@ public:
 		leftNode = iffStream->getInt();
 		rightNode = iffStream->getInt();
 	}
-
-	bool toBinaryStream(ObjectOutputStream* stream) {
-		return false;
-	}
-
-	bool parseFromBinaryStream(ObjectInputStream* stream) {
-		return false;
-	}
-
 };
 
-class Bedg {
+class Bedg : public Object {
 	int triangleID;
 	int edgeID;
 	char var3;
@@ -115,22 +135,17 @@ public:
 		var3 = iffStream->getByte();
 	}
 
-	inline int getTriangleID() const {
+	inline int getTriangleID() {
 		return triangleID;
 	}
 
-	inline int getEdgeID() const {
+	inline int getEdgeID() {
 		return edgeID;
 	}
 
-	bool toBinaryStream(ObjectOutputStream* stream) {
-		return false;
-	}
-
-	bool parseFromBinaryStream(ObjectInputStream* stream) {
-		return false;
-	}
 };
+
+
 
 class FloorMeshTriangleNode : public TriangleNode {
 public:
@@ -146,11 +161,11 @@ public:
 			portalID = -1;
 		}
 
-		int32 getNeighbor() const { return neighbor; }
+		int32 getNeighbor() { return neighbor; }
 
-		uint8 getFlags() const { return flags; }
+		uint8 getFlags() { return flags; }
 
-		int32 getPortalID() const { return portalID; }
+		int32 getPortalID() { return portalID; }
 		friend class FloorMeshTriangleNode;
 		friend class FloorMesh;
 	};
@@ -179,46 +194,29 @@ public:
 
 	void readObject(IffStream* iffStream);
 
-	inline int getIndex(int val) {
-		assert(val < 3);
-
-		return indicies[val];
-	}
-
-	inline bool isEdge() const {
+	inline bool isEdge() {
 		//return edge;
 		return neighbors.size() < 3;
 	}
 
-	inline uint32 getID() const final {
+	inline uint32 getID() {
 		return triangleID;
 	}
 
 	const Edge* getEdges() const {
 		return edges;
 	}
-
 	inline void addNeighbor(TriangleNode* node) {
 		neighbors.add(node);
 	}
 
-	inline const Vector<TriangleNode*>* getNeighbors() const final {
+	inline Vector<TriangleNode*>* getNeighbors() {
 		return &neighbors;
 	}
-
-	bool toBinaryStream(ObjectOutputStream* stream) {
-		return false;
-	}
-
-	bool parseFromBinaryStream(ObjectInputStream* stream) {
-		return false;
-	}
-
-	friend class FloorMesh;
 };
 
 class FloorMesh : public IffTemplate, public Logger {
-	Vector<Vector3> vertices;
+	Vector<Vert> vertices;
 	Vector<FloorMeshTriangleNode*> tris;
 	SortedVector<EdgeID> connectedEdges;
 	SortedVector<EdgeID> uncrossableEdges;
@@ -239,51 +237,45 @@ public:
 	void parsePGRF(IffStream* iffStream);
 	void parseVersion0006(IffStream* iffStream);
 	void parseVersion0005(IffStream* iffStream);
-	void parseVersion0003(IffStream* iffStream);
 
-	Vector <Reference<MeshData*>> getTransformedMeshData(const Matrix4& parentTransform) const;
+	Vector<TriangleNode*>* getNeighbors(uint32 triangleID);
 
-	const Vector<TriangleNode*>* getNeighbors(uint32 triangleID) const;
+	TriangleNode* findNearestTriangle(const Vector3& point);
 
-	const TriangleNode* findNearestTriangle(const Vector3& point) const;
+	bool testCollide(float x, float z, float y, float radius);
 
-	bool testCollide(float x, float z, float y, float radius) const;
-
-	const PathNode* getGlobalNode(int globalID) const;
-
-	inline const PathGraph* getPathGraph() const {
-		return pathGraph;
-	}
+	PathNode* getGlobalNode(int globalID);
 
 	inline PathGraph* getPathGraph() {
 		return pathGraph;
 	}
 
-	inline const FloorMeshTriangleNode* getTriangle(int tri) const {
+	inline FloorMeshTriangleNode* getTriangle(int tri) {
 		return tris.get(tri);
 	}
 
-	inline int getTriangleCount() const {
+	inline int getTriangleCount() {
 		return tris.size();
 	}
 
-	inline const AABBTree* getAABBTree() const {
+	inline AABBTree* getAABBTree() {
 		return aabbTree;
 	}
 
-	inline const Vector3* getVertex(int vert) const {
+	inline Vert* getVertex(int vert) {
 		return &vertices.get(vert);
 	}
 
-	inline int getCellID() const {
+	inline int getCellID() {
 		return cellID;
 	}
 
 	inline void setCellID(int id) {
+
 		cellID = id;
 	}
 
-	float calculateManhattanDistance(const TriangleNode* node1, const TriangleNode* node2) const {
+	float calculateManhattanDistance(TriangleNode* node1, TriangleNode* node2) {
 		Vector3 bary = node1->getBarycenter();
 		Vector3 bary2 = node2->getBarycenter();
 
@@ -292,5 +284,4 @@ public:
 
 	friend class FloorMeshTriangleNode;
 };
-
 #endif /* FLOORMESH_H_ */

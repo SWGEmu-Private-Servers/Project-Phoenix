@@ -166,9 +166,6 @@ public:
 		//Fishing 271 - 280
 		FISHING                            = 271,
 
-		// FRS
-		ENCLAVE_VOTING					   = 281,
-
 		//Medic 291 - 300
 		MEDIC_CONSENT                      = 291,
 		MEDIC_DIAGNOSE                     = 292,
@@ -272,8 +269,7 @@ public:
 		JUKEBOX_SELECTION				   = 1038,
 		SHUTTLE_BEACON					   = 1039,
 		FIELD_FACTION_CHANGE			   = 1040,
-		GOTO_LIST						   = 1041,
-		FS_EXP_CONVERT 					   = 1042
+		GOTO_LIST			   = 1041
 	};
 };
 

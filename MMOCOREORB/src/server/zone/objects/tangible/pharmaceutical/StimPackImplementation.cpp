@@ -3,7 +3,6 @@
 #include "templates/tangible/StimPackTemplate.h"
 #include "server/zone/managers/object/ObjectManager.h"
 #include "server/zone/packets/scene/AttributeListMessage.h"
-#include "templates/params/creature/CreatureAttribute.h"
 
 bool StimPackImplementation::isPetStimPack() {
 	return getObjectNameStringIdName().contains("pet_stimpack");
@@ -38,19 +37,19 @@ StimPack* StimPackImplementation::split(int charges) {
 	Locker locker(_this.getReferenceUnsafeStaticCast());
 	ObjectManager* objectManager = ObjectManager::instance();
 	ManagedReference<StimPack*> protoclone = cast<StimPack*>( objectManager->cloneObject(_this.getReferenceUnsafeStaticCast()));
-	if (protoclone != nullptr) {
+	if (protoclone != NULL) {
 		Locker cloneLocker(protoclone);
 
 		if(protoclone->hasAntiDecayKit()){
 			protoclone->removeAntiDecayKit();
 		}
 
-		protoclone->setParent(nullptr);
+		protoclone->setParent(NULL);
 		protoclone->setUseCount(charges);
 		decreaseUseCount(charges);
 		return protoclone;
 	}
-	return nullptr;
+	return NULL;
 }
 
 void StimPackImplementation::fillAttributeList(AttributeListMessage* msg, CreatureObject* object) {

@@ -6,6 +6,7 @@
 #define MOUNTCOMMAND_H_
 
 #include "server/zone/objects/scene/SceneObject.h"
+#include "server/zone/objects/creature/VehicleObject.h"
 #include "server/zone/managers/objectcontroller/ObjectController.h"
 
 class MountCommand : public QueueCommand {
@@ -28,7 +29,7 @@ public:
 	int doQueueCommand(CreatureObject* creature, const uint64& target, const UnicodeString& arguments) const {
 		ZoneServer* zoneServer = server->getZoneServer();
 
-		if (zoneServer == nullptr || !creature->checkCooldownRecovery("mount_dismount"))
+		if (zoneServer == NULL || !creature->checkCooldownRecovery("mount_dismount"))
 			return GENERALERROR;
 
 		if (creature->isRidingMount()) {
@@ -43,7 +44,7 @@ public:
 
 		ManagedReference<SceneObject*> object = zoneServer->getObject(target);
 
-		if (object == nullptr) {
+		if (object == NULL) {
 			return INVALIDTARGET;
 		}
 
@@ -66,19 +67,13 @@ public:
 		if (!vehicle->isInRange(creature, 5))
 			return GENERALERROR;
 
-		if (creature->getParent() != nullptr || vehicle->getParent() != nullptr)
+		if (creature->getParent() != NULL || vehicle->getParent() != NULL)
 			return GENERALERROR;
 
 		if (vehicle->isDisabled()) {
 			creature->sendSystemMessage("@pet/pet_menu:cant_mount_veh_disabled");
 			return GENERALERROR;
 		}
-
-		if (vehicle->isIncapacitated())
-			return GENERALERROR;
-
-		if (vehicle->isDead())
-			return GENERALERROR;
 
 		if (vehicle->getPosture() == CreaturePosture::LYINGDOWN || vehicle->getPosture() == CreaturePosture::SITTING) {
 			vehicle->setPosture(CreaturePosture::UPRIGHT);
@@ -92,8 +87,6 @@ public:
 
 			return GENERALERROR;
 		}
-
-		creature->synchronizeCloseObjects();
 		creature->setState(CreatureState::RIDINGMOUNT);
 		creature->clearState(CreatureState::SWIMMING);
 
@@ -122,18 +115,19 @@ public:
 		//We released this crosslock before to remove player buffs
 		Locker vehicleLocker(vehicle, creature);
 
-		if (vehicle->hasBuff(gallopCRC)) {
-			Core::getTaskManager()->executeTask([=] () {
+		if(vehicle->hasBuff(gallopCRC)) {
+			EXECUTE_TASK_1(vehicle, {
+
 				uint32 gallopCRC = STRING_HASHCODE("gallop");
-				Locker lock(vehicle);
+				Locker lock(vehicle_p);
 
-				ManagedReference<Buff*> gallop = vehicle->getBuff(gallopCRC);
-				Locker blocker(gallop, vehicle);
+				ManagedReference<Buff*> gallop = vehicle_p->getBuff(gallopCRC);
+				Locker blocker(gallop, vehicle_p);
 
-				if (gallop != nullptr) {
+				if(gallop != NULL) {
 					gallop->applyAllModifiers();
 				}
-			}, "AddGallopModsLambda");
+			});
 		}
 
 		// Speed hack buffer
@@ -154,7 +148,7 @@ public:
 		if (vehicle->isMount()) {
 			PetManager* petManager = server->getZoneServer()->getPetManager();
 
-			if (petManager != nullptr) {
+			if (petManager != NULL) {
 				newSpeed = petManager->getMountedRunSpeed(vehicle);
 			}
 		}
@@ -181,6 +175,7 @@ public:
 
 		return SUCCESS;
 	}
+
 };
 
 #endif //MOUNTCOMMAND_H_

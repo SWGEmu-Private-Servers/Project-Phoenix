@@ -22,6 +22,7 @@
 #include "engine/engine.h"
 #include "pathfinding/recast/DetourNavMesh.h"
 #include "pathfinding/recast/Recast.h"
+#include "terrain/layer/boundaries/BoundaryPolygon.h"
 #include "RecastPolygon.h"
 #include "server/zone/Zone.h"
 #include "terrain/manager/TerrainManager.h"
@@ -31,7 +32,15 @@ class RecastNavMesh;
 
 class MeshData;
 
-class RecastNavMeshBuilder : public Object, Logger {
+class BoundaryPolygon;
+namespace server {
+	namespace zone {
+		class Zone;
+	}
+}
+
+
+class RecastNavMeshBuilder : public Logger {
 protected:
 	bool m_keepInterResults;
 	bool m_buildAll;
@@ -59,8 +68,6 @@ protected:
 
 	unsigned char* buildTileMesh(const int tx, const int ty, int& dataSize);
 
-	virtual void rebuildArea(const AABB& buildArea);
-
 	void cleanup();
 
 	Vector <Reference<RecastPolygon*>> water;
@@ -79,6 +86,8 @@ public:
 	getTerrainMesh(Vector3& position, float terrainSize, TerrainManager* terrainManager, float chunkSize,
 				   float distanceBetweenHeights);
 
+	void saveAll(const String& file);
+
 	RecastNavMeshBuilder(Zone* zone, const String& name, const AtomicBoolean* jobStatus);
 
 	virtual ~RecastNavMeshBuilder();
@@ -91,11 +100,11 @@ public:
 
 	virtual bool build();
 
-	virtual void rebuildAreas(const Vector<AABB>& buildAreas, NavArea* navArea);
+	virtual bool rebuildArea(const AABB& area, RecastNavMesh* existingMesh);
 
 	void buildAllTiles();
 
-	void buildAllTiles(const AABB& areaToRebuild);
+	void buildAllTiles(RecastNavMesh* mesh, const AABB& areaToRebuild);
 
 	RecastSettings& getRecastConfig() {
 		return settings;

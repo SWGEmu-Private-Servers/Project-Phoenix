@@ -6,19 +6,20 @@
  */
 
 #include "PlayerContainerComponent.h"
-#include "server/zone/objects/creature/CreatureObject.h"
 #include "server/zone/objects/player/PlayerObject.h"
 #include "server/zone/objects/player/FactionStatus.h"
 #include "server/zone/objects/tangible/wearables/ArmorObject.h"
+#include "server/zone/objects/tangible/wearables/RobeObject.h"
 #include "server/zone/objects/tangible/weapon/WeaponObject.h"
 #include "server/zone/managers/player/PlayerManager.h"
 #include "server/zone/ZoneServer.h"
+#include "server/zone/packets/creature/CreatureObjectMessage6.h"
 #include "server/zone/managers/visibility/VisibilityManager.h"
 
 int PlayerContainerComponent::canAddObject(SceneObject* sceneObject, SceneObject* object, int containmentType, String& errorDescription) const {
 	CreatureObject* creo = dynamic_cast<CreatureObject*>(sceneObject);
 
-	if (creo == nullptr) {
+	if (creo == NULL) {
 		return TransferErrorCode::PLAYERUSEMASKERROR;
 	}
 
@@ -27,8 +28,8 @@ int PlayerContainerComponent::canAddObject(SceneObject* sceneObject, SceneObject
 
 		SharedTangibleObjectTemplate* tanoData = dynamic_cast<SharedTangibleObjectTemplate*>(wearable->getObjectTemplate());
 
-		if (tanoData != nullptr) {
-			const auto races = tanoData->getPlayerRaces();
+		if (tanoData != NULL) {
+			Vector<uint32>* races = tanoData->getPlayerRaces();
 			String race = creo->getObjectTemplate()->getFullTemplateString();
 
 			if (!races->contains(race.hashCode())) {
@@ -65,7 +66,7 @@ int PlayerContainerComponent::canAddObject(SceneObject* sceneObject, SceneObject
 		}
 
 		if (object->isWearableObject()) {
-			if (tanoData != nullptr) {
+			if (tanoData != NULL) {
 				const Vector<String>& skillsRequired = tanoData->getCertificationsRequired();
 
 				if (skillsRequired.size() > 0) {
@@ -99,11 +100,6 @@ int PlayerContainerComponent::canAddObject(SceneObject* sceneObject, SceneObject
 					errorDescription = "@jedi_spam:lightsaber_no_color";
 					return TransferErrorCode::PLAYERUSEMASKERROR;
 				}
-
-				if (weapon->getCraftersName() != creo->getFirstName() && !ghost->isPrivileged()) {
-					errorDescription = "@jedi_spam:not_your_lightsaber";
-					return TransferErrorCode::PLAYERUSEMASKERROR;
-				}
 			}
 		}
 	}
@@ -118,7 +114,7 @@ int PlayerContainerComponent::canAddObject(SceneObject* sceneObject, SceneObject
 int PlayerContainerComponent::notifyObjectInserted(SceneObject* sceneObject, SceneObject* object) const {
 	CreatureObject* creo = dynamic_cast<CreatureObject*>(sceneObject);
 
-	if (creo == nullptr) {
+	if (creo == NULL) {
 		return 0;
 	}
 
@@ -159,7 +155,7 @@ int PlayerContainerComponent::notifyObjectInserted(SceneObject* sceneObject, Sce
 	if (ghost && ghost->isJedi()) {
 
 		if (object->isRobeObject()) {
-			ghost->recalculateForcePower();
+			ghost->setForcePowerMax(creo->getSkillMod("jedi_force_power_max"));
 		} else if (object->isWeaponObject()) {
 			WeaponObject* weaponObject = cast<WeaponObject*>(object);
 			if (weaponObject->isJediWeapon()) {
@@ -178,7 +174,7 @@ int PlayerContainerComponent::notifyObjectInserted(SceneObject* sceneObject, Sce
 int PlayerContainerComponent::notifyObjectRemoved(SceneObject* sceneObject, SceneObject* object, SceneObject* destination) const {
 	CreatureObject* creo = dynamic_cast<CreatureObject*>(sceneObject);
 
-	if (creo == nullptr) {
+	if (creo == NULL) {
 		return 0;
 	}
 
@@ -220,7 +216,7 @@ int PlayerContainerComponent::notifyObjectRemoved(SceneObject* sceneObject, Scen
 
 	if (ghost && ghost->isJedi()) {
 		if (object->isRobeObject()) {
-			ghost->recalculateForcePower();
+			ghost->setForcePowerMax(creo->getSkillMod("jedi_force_power_max"));
 		}
 	}
 

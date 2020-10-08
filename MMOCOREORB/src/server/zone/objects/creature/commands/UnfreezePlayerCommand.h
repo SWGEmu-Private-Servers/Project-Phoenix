@@ -31,11 +31,11 @@ public:
 
 		ManagedReference<SceneObject* > object = server->getZoneServer()->getObject(target);
 
-		ManagedReference<CreatureObject* > targetPlayer = nullptr;
+		ManagedReference<CreatureObject* > targetPlayer = NULL;
 		CreatureObject* player = cast<CreatureObject*>(creature);
 		StringTokenizer args(arguments.toString());
 
-		if (object == nullptr || !object->isPlayerCreature()) {
+		if (object == NULL || !object->isPlayerCreature()) {
 
 			String firstName;
 			if (args.hasMoreTokens()) {
@@ -47,14 +47,14 @@ public:
 			targetPlayer = cast<CreatureObject*>( object.get());
 		}
 
-		if (targetPlayer == nullptr) {
+		if (targetPlayer == NULL) {
 			player->sendSystemMessage(syntaxerror);
 			return INVALIDPARAMETERS;
 		}
 
 		ManagedReference<PlayerObject*> targetGhost = targetPlayer->getPlayerObject();
 
-		if (targetGhost == nullptr) {
+		if (targetGhost == NULL) {
 			player->sendSystemMessage(syntaxerror);
 			return INVALIDPARAMETERS;
 		}
@@ -69,6 +69,7 @@ public:
 
 			targetPlayer->removeStateBuff(CreatureState::FROZEN);
 			targetPlayer->sendSystemMessage("You have been unfrozen and unmuted by \'" + player->getFirstName() + "\'");
+			targetPlayer->setPosture(CreaturePosture::UPRIGHT);
 
 			targetPlayer->setSpeedMultiplierBase(1.f, true);
 

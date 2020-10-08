@@ -7,7 +7,7 @@
 
 #include "LuaPlayerObject.h"
 #include "engine/engine.h"
-#include "server/zone/managers/frs/FrsManager.h"
+#include "FactionStatus.h"
 #include "server/zone/managers/crafting/schematicmap/SchematicMap.h"
 #include "server/zone/objects/tangible/deed/eventperk/EventPerkDeed.h"
 #include "server/zone/objects/tangible/eventperk/Jukebox.h"
@@ -15,7 +15,6 @@
 #include "server/zone/managers/skill/SkillManager.h"
 #include "server/zone/Zone.h"
 #include "server/zone/objects/region/CityRegion.h"
-#include "server/zone/objects/player/sessions/SlicingSession.h"
 
 const char LuaPlayerObject::className[] = "LuaPlayerObject";
 
@@ -48,7 +47,6 @@ Luna<LuaPlayerObject>::RegType LuaPlayerObject::Register[] = {
 		{ "isJediLight", &LuaPlayerObject::isJediLight },
 		{ "isJediDark", &LuaPlayerObject::isJediDark },
 		{ "setJediState", &LuaPlayerObject::setJediState },
-		{ "getJediState", &LuaPlayerObject::getJediState },
 		{ "isOnline", &LuaPlayerObject::isOnline },
 		{ "setActiveQuestsBit", &LuaPlayerObject::setActiveQuestsBit },
 		{ "clearActiveQuestsBit", &LuaPlayerObject::clearActiveQuestsBit },
@@ -73,15 +71,7 @@ Luna<LuaPlayerObject>::RegType LuaPlayerObject::Register[] = {
 		{ "getSuiBox", &LuaPlayerObject::getSuiBox },
 		{ "addSuiBox", &LuaPlayerObject::addSuiBox },
 		{ "removeSuiBox", &LuaPlayerObject::removeSuiBox },
-		{ "isJediTrainer", &LuaPlayerObject::isJediTrainer },
-		{ "getVisibility", &LuaPlayerObject::getVisibility },
-		{ "setFrsCouncil", &LuaPlayerObject::setFrsCouncil },
-		{ "setFrsRank", &LuaPlayerObject::setFrsRank },
-		{ "getFrsRank", &LuaPlayerObject::getFrsRank },
-		{ "getFrsCouncil", &LuaPlayerObject::getFrsCouncil },
-		{ "startSlicingSession", &LuaPlayerObject::startSlicingSession },
-		{ "setVisibility", &LuaPlayerObject::setVisibility },
-		{ "getPlayedTimeString", &LuaPlayerObject::getPlayedTimeString },
+		{ "findJediTrainer", &LuaPlayerObject::findJediTrainer },
 		{ 0, 0 }
 };
 
@@ -90,7 +80,7 @@ LuaPlayerObject::LuaPlayerObject(lua_State *L) : LuaIntangibleObject(L) {
 #ifdef DYNAMIC_CAST_LUAOBJECTS
 	realObject = dynamic_cast<PlayerObject*>(_getRealSceneObject());
 
-	E3_ASSERT(!_getRealSceneObject() || realObject != nullptr);
+	assert(!_getRealSceneObject() || realObject != NULL);
 #else
 	realObject = reinterpret_cast<PlayerObject*>(lua_touserdata(L, 1));
 #endif
@@ -105,7 +95,7 @@ int LuaPlayerObject::_setObject(lua_State* L) {
 #ifdef DYNAMIC_CAST_LUAOBJECTS
 	realObject = dynamic_cast<PlayerObject*>(_getRealSceneObject());
 
-	E3_ASSERT(!_getRealSceneObject() || realObject != nullptr);
+	assert(!_getRealSceneObject() || realObject != NULL);
 #else
 	realObject = (PlayerObject*)lua_touserdata(L, -1);
 #endif
@@ -231,7 +221,7 @@ int LuaPlayerObject::getWaypointAt(lua_State* L) {
 
 	WaypointObject* waypoint = realObject->getWaypointAt(x, y, planet);
 
-	if (waypoint != nullptr)
+	if (waypoint != NULL)
 		lua_pushlightuserdata(L, waypoint);
 	else
 		lua_pushnil(L);
@@ -255,7 +245,7 @@ int LuaPlayerObject::addRewardedSchematic(lua_State* L){
 
 	DraftSchematic* schematic = SchematicMap::instance()->get(templateString.hashCode());
 
-	if (schematic == nullptr) {
+	if (schematic == NULL) {
 		lua_pushboolean(L, false);
 		return 1;
 	}
@@ -282,7 +272,7 @@ int LuaPlayerObject::removeRewardedSchematic(lua_State* L){
 
 	DraftSchematic* schematic = SchematicMap::instance()->get(templateString.hashCode());
 
-	if (schematic != nullptr)
+	if (schematic != NULL)
 		realObject->removeRewardedSchematic(schematic, notifyClient);
 
 	return 0;
@@ -339,7 +329,7 @@ int LuaPlayerObject::addHologrindProfession(lua_State* L){
 }
 
 int LuaPlayerObject::getHologrindProfessions(lua_State* L) {
-	const Vector<byte>* professions = realObject->getHologrindProfessions();
+	Vector<byte>* professions = realObject->getHologrindProfessions();
 
 	lua_newtable(L);
 
@@ -396,12 +386,6 @@ int LuaPlayerObject::setJediState(lua_State* L) {
 	realObject->setJediState(jediState);
 
 	return 0;
-}
-
-int LuaPlayerObject::getJediState(lua_State* L) {
-	lua_pushinteger(L, realObject->getJediState());
-
-	return 1;
 }
 
 int LuaPlayerObject::isOnline(lua_State* L) {
@@ -525,7 +509,7 @@ int LuaPlayerObject::hasEventPerk(lua_State* L) {
 int LuaPlayerObject::addEventPerk(lua_State* L) {
 	SceneObject* item = (SceneObject*) lua_touserdata(L, -1);
 
-	if (item == nullptr) {
+	if (item == NULL) {
 		return 0;
 	}
 
@@ -533,7 +517,7 @@ int LuaPlayerObject::addEventPerk(lua_State* L) {
 
 	ManagedReference<CreatureObject*> creature = dynamic_cast<CreatureObject*>(realObject->getParent().get().get());
 
-	if (creature != nullptr) {
+	if (creature != NULL) {
 		if (item->isEventPerkDeed()) {
 			EventPerkDeed* deed = cast<EventPerkDeed*>(item);
 			deed->setOwner(creature);
@@ -541,12 +525,12 @@ int LuaPlayerObject::addEventPerk(lua_State* L) {
 			if (item->getServerObjectCRC() == 0x46BD798B) { // Jukebox
 				Jukebox* jbox = cast<Jukebox*>(item);
 
-				if (jbox != nullptr)
+				if (jbox != NULL)
 					jbox->setOwner(creature);
 			} else if (item->getServerObjectCRC() == 0x255F612C) { // Shuttle Beacon
 				ShuttleBeacon* beacon = cast<ShuttleBeacon*>(item);
 
-				if (beacon != nullptr)
+				if (beacon != NULL)
 					beacon->setOwner(creature);
 			}
 		}
@@ -585,7 +569,7 @@ int LuaPlayerObject::closeSuiWindowType(lua_State* L) {
 }
 
 int LuaPlayerObject::getExperienceList(lua_State* L) {
-	const DeltaVectorMap<String, int>* expList = realObject->getExperienceList();
+	DeltaVectorMap<String, int>* expList = realObject->getExperienceList();
 
 	lua_newtable(L);
 
@@ -610,7 +594,7 @@ int LuaPlayerObject::getSuiBox(lua_State* L) {
 	uint32 pageId = lua_tointeger(L, -1);
 	Reference<SuiBox*> object = realObject->getSuiBox(pageId);
 
-	if (object == nullptr) {
+	if (object == NULL) {
 		lua_pushnil(L);
 	} else {
 		lua_pushlightuserdata(L, object.get());
@@ -623,7 +607,7 @@ int LuaPlayerObject::getSuiBox(lua_State* L) {
 int LuaPlayerObject::addSuiBox(lua_State* L) {
 	Reference<SuiBox*> box = (SuiBox*) lua_touserdata(L, -1);
 
-	if (box == nullptr)
+	if (box == NULL)
 		return 0;
 
 	realObject->addSuiBox(box);
@@ -638,115 +622,76 @@ int LuaPlayerObject::removeSuiBox(lua_State* L) {
 	return 1;
 }
 
+int LuaPlayerObject::findJediTrainer(lua_State* L) {
 
-int LuaPlayerObject::isJediTrainer(lua_State* L) {
-	CreatureObject* trainer = (CreatureObject*)lua_touserdata(L, -1);
+	ZoneServer* zServ = realObject->getZoneServer();
 
-	Vector3 npc(trainer->getWorldPositionX(), trainer->getWorldPositionY(), 0);
-	Vector3 playerCoord = realObject->getTrainerCoordinates();
-	Vector3 player(playerCoord.getX(), playerCoord.getY(), 0);
-
-	bool result = (npc == player) && (realObject->getTrainerZoneName() == trainer->getZone()->getZoneName());
-
-	lua_pushboolean(L, result);
-
-	return 1;
-}
-
-int LuaPlayerObject::getVisibility(lua_State* L) {
-	lua_pushnumber(L, realObject->getVisibility());
-
-	return 1;
-}
-
-int LuaPlayerObject::setFrsCouncil(lua_State* L) {
-	int councilType = lua_tointeger(L, -1);
-
-	FrsData* frsData = realObject->getFrsData();
-
-	frsData->setCouncilType(councilType);
-
-	return 0;
-}
-
-int LuaPlayerObject::setVisibility(lua_State* L) {
-	int visValue = lua_tointeger(L, -1);
-
-	realObject->setVisibility(visValue);
-
-	return 0;
-}
-
-
-int LuaPlayerObject::setFrsRank(lua_State* L) {
-	int rank = lua_tointeger(L, -1);
-
-	FrsManager* frsManager = realObject->getZoneServer()->getFrsManager();
-
-	ManagedReference<CreatureObject*> player = realObject->getParentRecursively(SceneObjectType::PLAYERCREATURE).castTo<CreatureObject*>();
-
-	if (frsManager != nullptr && player != nullptr) {
-		Locker locker(player);
-
-		frsManager->setPlayerRank(player, rank);
-	}
-
-	return 0;
-}
-
-int LuaPlayerObject::getFrsRank(lua_State* L) {
-	FrsData* frsData = realObject->getFrsData();
-
-	lua_pushinteger(L, frsData->getRank());
-
-	return 1;
-}
-
-int LuaPlayerObject::getFrsCouncil(lua_State* L) {
-	FrsData* frsData = realObject->getFrsData();
-
-	lua_pushinteger(L, frsData->getCouncilType());
-
-	return 1;
-}
-
-int LuaPlayerObject::startSlicingSession(lua_State* L) {
-	TangibleObject* objToSlice = (TangibleObject*) lua_touserdata(L, -2);
-	bool isKeypadSlice = lua_toboolean(L, -1);
-
-	if (objToSlice == nullptr)
-		return 0;
-
-	ManagedReference<CreatureObject*> player = realObject->getParentRecursively(SceneObjectType::PLAYERCREATURE).castTo<CreatureObject*>();
-
-	if (player == nullptr)
-		return 0;
-
-	if (player->containsActiveSession(SessionFacadeType::SLICING)) {
-		player->sendSystemMessage("@slicing/slicing:already_slicing");
+	if (zServ == NULL) {
 		return 0;
 	}
 
-	//Create Session
-	ManagedReference<SlicingSession*> session = new SlicingSession(player);
-	session->setKeypadSlice(isKeypadSlice);
-	session->initalizeSlicingMenu(player, objToSlice);
+	Vector<ManagedReference<SceneObject*> > trainers;
+	Vector<String> trainerTypes;
 
-	return 0;
-}
+	// Map categories defined here.
+	trainerTypes.add("trainer_brawler");
+	trainerTypes.add("trainer_artisan");
+	trainerTypes.add("trainer_scout");
+	trainerTypes.add("trainer_marksman");
+	trainerTypes.add("trainer_entertainer");
+	trainerTypes.add("trainer_medic");
 
-int LuaPlayerObject::getPlayedTimeString(lua_State* L) {
-	int argc = lua_gettop(L) - 1;
-
-	bool verbose = false;
-
-	if (argc == 1) {
-		verbose = lua_toboolean(L, -1);
+	// Trainer number. Pick a random trainer, there are at least 600 in the galaxy.
+	for (int i=0; i < zServ->getZoneCount(); ++i) {
+		Zone* zone = zServ->getZone(i);
+		for (int j=0; j < trainerTypes.size(); ++j) {
+			SortedVector<ManagedReference<SceneObject*> > objectList = zone->getPlanetaryObjectList(trainerTypes.get(j));
+			trainers.addAll(objectList);
+		}
 	}
 
-	Locker locker(realObject);
+	bool found = false;
+	Vector3 coords;
+	String zoneName = "";
+	int size = trainers.size();
 
-	lua_pushstring(L, realObject->getPlayedTimeString(verbose).toCharArray());
+	if (size <= 0) {
+		realObject->error("Size of trainers was less than or equal to zero in LuaPlayerObject::findJediTrainer()");
+		return 0;
+	}
 
-	return 1;
+	while (!found) {
+		SceneObject* trainer = trainers.get(System::random(size - 1));
+
+		if (trainer == NULL) {
+			continue;
+		}
+
+		CreatureObject* trainerCreo = trainer->asCreatureObject();
+
+		if (trainerCreo == NULL) {
+			continue;
+		}
+
+		if (!(trainerCreo->getOptionsBitmask() & OptionBitmask::CONVERSE)) {
+			continue;
+		}
+
+		ManagedReference<CityRegion*> city = trainerCreo->getCityRegion().get();
+
+		// Make sure it's not a player-city trainer.
+		if (city != NULL && !city->isClientRegion()){
+			continue;
+		}
+
+		zoneName = trainerCreo->getZone()->getZoneName();
+		coords = trainerCreo->getWorldPosition();
+		found = true;
+
+	}
+
+	realObject->setTrainerCoordinates(coords);
+	realObject->setTrainerZoneName(zoneName); // For the waypoint.
+
+	return 0;
 }

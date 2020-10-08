@@ -6,6 +6,8 @@
 #define PLAYERDISCONNECTEVENT_H_
 
 #include "server/zone/objects/player/PlayerObject.h"
+#include "server/zone/packets/scene/SceneObjectDestroyMessage.h"
+#include "server/zone/Zone.h"
 
 namespace server {
 namespace zone {
@@ -25,10 +27,10 @@ public:
 	void run() {
 		ManagedReference<PlayerObject*> play = player.get();
 
-		if (play == nullptr)
+		if (play == NULL)
 			return;
 
-		ManagedReference<SceneObject*> par = play->getParent().get();
+		ManagedReference<SceneObject*> par = play->getParent();
 
 		Locker locker(par);
 

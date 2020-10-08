@@ -14,10 +14,13 @@
 #include "server/zone/objects/waypoint/WaypointObject.h"
 #include "server/zone/managers/stringid/StringIdManager.h"
 #include "server/zone/objects/region/CityRegion.h"
+#include "server/zone/objects/area/ActiveArea.h"
 #include "server/chat/StringIdChatParameter.h"
+#include "server/zone/managers/planet/MapLocationType.h"
 #include "server/zone/packets/ui/CreateClientPathMessage.h"
 #include "server/zone/objects/player/sessions/sui/FindSessionSuiCallback.h"
 #include "server/zone/objects/scene/WorldCoordinates.h"
+#include "server/zone/objects/cell/CellObject.h"
 #include "server/zone/managers/collision/PathFinderManager.h"
 #include "templates/building/SharedBuildingObjectTemplate.h"
 #include "templates/appearance/PortalLayout.h"
@@ -26,7 +29,7 @@
 void FindSessionImplementation::initalizeFindMenu() {
 	ManagedReference<CreatureObject* > player = this->player.get();
 
-	if (player == nullptr)
+	if (player == NULL)
 		return;
 
 	ManagedReference<SuiListBox*> box = new SuiListBox(player, SuiWindowType::FINDSESSION, 2);
@@ -67,8 +70,8 @@ void FindSessionImplementation::initalizeFindMenu() {
 WaypointObject* FindSessionImplementation::addWaypoint(float x, float y, const String& name) {
 	ManagedReference<CreatureObject* > player = this->player.get();
 
-	if (player == nullptr)
-		return nullptr;
+	if (player == NULL)
+		return NULL;
 
 	PlayerObject* ghost = player->getPlayerObject();
 
@@ -98,7 +101,7 @@ WaypointObject* FindSessionImplementation::addWaypoint(float x, float y, const S
 void FindSessionImplementation::clearWaypoint() {
 	ManagedReference<CreatureObject* > player = this->player.get();
 
-	if (player == nullptr)
+	if (player == NULL)
 		return;
 
 	PlayerObject* po = player->getPlayerObject();
@@ -109,29 +112,29 @@ void FindSessionImplementation::clearWaypoint() {
 void FindSessionImplementation::findPlanetaryObject(String& maplocationtype) {
 	ManagedReference<CreatureObject* > player = this->player.get();
 
-	if (player == nullptr)
+	if (player == NULL)
 		return;
 
 	Zone* zone = player->getZone();
 
-	if (zone == nullptr) {
+	if (zone == NULL) {
 		cancelSession();
 		return;
 	}
 
 	ManagedReference<SceneObject*> object = zone->getNearestPlanetaryObject(player, maplocationtype);
-	Zone* objectZone = nullptr;
+	Zone* objectZone = NULL;
 
-	if (object == nullptr || ((objectZone = object->getZone()) == nullptr)) {
+	if (object == NULL || ((objectZone = object->getZone()) == NULL)) {
 		player->sendSystemMessage("@find_display:no_registered_locs"); // There currently are not registered map locations on this planet.
 		cancelSession();
 		return;
 	}
 
-	ManagedReference<CityRegion*> region = object->getCityRegion().get();
+	ManagedReference<CityRegion*> region = object->getCityRegion();
 	String regFullName = "";
 
-	if (region != nullptr) {
+	if (region != NULL) {
 		regFullName = region->getRegionName();
 	}
 
@@ -158,13 +161,13 @@ void FindSessionImplementation::findPlanetaryObject(String& maplocationtype) {
 	WorldCoordinates start(player);
 	WorldCoordinates end(object);
 
-	SortedVector<ManagedReference<NavArea*> > areas;
+	SortedVector<ManagedReference<NavMeshRegion*> > regions;
 	//fetch nav meshes near the target position
-	zone->getInRangeNavMeshes(end.getX(), end.getY(), &areas, false);
+	zone->getInRangeNavMeshes(end.getX(), end.getY(), 5, &regions, false);
 
 	bool withinNavMesh = false;
 
-	for (const auto& mesh : areas) {
+	for (const auto& mesh : regions) {
 		// test to see if our player is within the same nav mesh
 		if (mesh->containsPoint(start.getX(), start.getY())) {
 			withinNavMesh = true;
@@ -174,45 +177,37 @@ void FindSessionImplementation::findPlanetaryObject(String& maplocationtype) {
 
 	if (withinNavMesh) {
 		Vector <WorldCoordinates> entrances;
-		Reference < Vector < WorldCoordinates > * > path = nullptr;
+		Reference < Vector < WorldCoordinates > * > path = NULL;
 
 		if (object->isBuildingObject()) {
 			BuildingObject* building = object->asBuildingObject();
-
 			SharedBuildingObjectTemplate* templateData = static_cast<SharedBuildingObjectTemplate*>(object->getObjectTemplate());
-			const PortalLayout* portalLayout = templateData->getPortalLayout();
+			PortalLayout* portalLayout = templateData->getPortalLayout();
 
-			if (portalLayout != nullptr) {
-				const Vector <Reference<CellProperty*> >& cells = portalLayout->getCellProperties();
+			if (portalLayout != NULL) {
+				const Vector <CellProperty>& cells = portalLayout->getCellProperties();
 				if (cells.size() > 0) {
-					const CellProperty* cell = cells.get(0);
-
-					for (int i = 0; i < cell->getNumberOfPortals(); i++) {
-						const CellPortal* portal = cell->getPortal(i);
+					const CellProperty& cell = cells.get(0);
+					for (int i = 0; i < cell.getNumberOfPortals(); i++) {
+						const CellPortal* portal = cell.getPortal(i);
 						const AABB& box = portalLayout->getPortalBounds(portal->getGeometryIndex());
 
 						Vector3 center = box.center();
 						center.setZ(center.getZ() + 5.0f);
 						Matrix4 transform;
-
-						auto dir = building->getDirection();
-
-						Quaternion directionRecast(dir->getW(), dir->getX(), dir->getY(), -dir->getZ());
-
-						transform.setRotationMatrix(directionRecast.toMatrix3());
+						transform.setRotationMatrix(building->getDirection()->toMatrix3());
 						transform.setTranslation(building->getPositionX(), building->getPositionZ(),
 												 -building->getPositionY());
 
 						Vector3 dPos = (Vector3(center.getX(), center.getY(), -center.getZ()) * transform);
-						entrances.add(WorldCoordinates(Vector3(dPos.getX(), -dPos.getZ(), dPos.getY()), nullptr));
+						entrances.add(WorldCoordinates(Vector3(dPos.getX(), -dPos.getZ(), dPos.getY()), NULL));
 					}
-
 					path = PathFinderManager::instance()->findPathFromWorldToWorld(start, entrances, zone, false);
 				}
 			}
 		}
 
-		if (path == nullptr) {
+		if (path == NULL) {
 			path = PathFinderManager::instance()->findPath(start, end, zone);
 		}
 
@@ -223,9 +218,9 @@ void FindSessionImplementation::findPlanetaryObject(String& maplocationtype) {
 				msg->addCoordinate(point.getX(), point.getZ(), point.getY());
 			}
 
-			if (wpt != nullptr) {
+			if (wpt != NULL) {
 				PlayerObject* ghost = player->getPlayerObject();
-				if (ghost != nullptr)
+				if (ghost != NULL)
 					ghost->setClientPathWaypoint(wpt);
 			}
 

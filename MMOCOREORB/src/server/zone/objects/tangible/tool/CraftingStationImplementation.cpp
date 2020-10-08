@@ -5,11 +5,16 @@
 #include "engine/engine.h"
 
 #include "server/zone/objects/tangible/tool/CraftingStation.h"
+#include "server/zone/Zone.h"
+#include "server/zone/ZoneServer.h"
 #include "server/zone/objects/creature/CreatureObject.h"
+#include "server/zone/objects/player/PlayerObject.h"
 #include "server/zone/packets/object/ObjectMenuResponse.h"
 #include "templates/tangible/tool/CraftingStationTemplate.h"
 #include "server/zone/objects/tangible/tool/CraftingTool.h"
 #include "server/zone/objects/manufactureschematic/craftingvalues/CraftingValues.h"
+#include "server/zone/objects/area/ActiveArea.h"
+#include "server/zone/objects/building/BuildingObject.h"
 #include "server/zone/packets/scene/AttributeListMessage.h"
 
 void CraftingStationImplementation::loadTemplateData(SharedObjectTemplate* templateData) {
@@ -29,8 +34,8 @@ void CraftingStationImplementation::fillObjectMenuResponse(ObjectMenuResponse* m
 
 	/*ManagedReference<BuildingObject*> building = cast<BuildingObject*>(getRootParent());
 
-	if(building != nullptr && !isASubChildOf(player)) {
-		if(building->isOnAdminList(player) && getSlottedObject("ingredient_hopper") != nullptr) {
+	if(building != NULL && !isASubChildOf(player)) {
+		if(building->isOnAdminList(player) && getSlottedObject("ingredient_hopper") != NULL) {
 			menuResponse->addRadialMenuItem(68, 3, "@ui_radial:craft_hopper_input"); //Open
 		}
 	}*/
@@ -38,11 +43,11 @@ void CraftingStationImplementation::fillObjectMenuResponse(ObjectMenuResponse* m
 
 int CraftingStationImplementation::handleObjectMenuSelect(CreatureObject* player, byte selectedID) {
 
-	/*if (selectedID == 68 && getSlottedObject("ingredient_hopper") != nullptr) { // use object
+	/*if (selectedID == 68 && getSlottedObject("ingredient_hopper") != NULL) { // use object
 
 		ManagedReference<BuildingObject*> building = cast<BuildingObject*>(getRootParent());
 
-		if(building != nullptr && !isASubChildOf(player)) {
+		if(building != NULL && !isASubChildOf(player)) {
 			if(building->isOnAdminList(player))
 				sendInputHopper(player);
 		}
@@ -61,7 +66,7 @@ void CraftingStationImplementation::sendInputHopper(CreatureObject* player) {
 
 	/*ManagedReference<SceneObject*> inputHopper = getSlottedObject("ingredient_hopper");
 
-	if(inputHopper == nullptr) {
+	if(inputHopper == NULL) {
 		return;
 	}
 
@@ -77,13 +82,13 @@ SceneObject* CraftingStationImplementation::findCraftingTool(CreatureObject* pla
 	ManagedReference<SceneObject*> inventory = player->getSlottedObject(
 			"inventory");
 	Locker inventoryLocker(inventory);
-	SceneObject* craftingTool = nullptr;
+	SceneObject* craftingTool = NULL;
 
 	for (int i = 0; i < inventory->getContainerObjectsSize(); ++i) {
 
 		SceneObject* object = inventory->getContainerObject(i);
 
-		if (object != nullptr && object->isCraftingTool()) {
+		if (object != NULL && object->isCraftingTool()) {
 
 			CraftingTool* tool = cast<CraftingTool*>( object);
 

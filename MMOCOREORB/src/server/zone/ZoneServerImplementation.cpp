@@ -8,7 +8,10 @@
 
 #include "server/zone/Zone.h"
 
-#include "server/db/ServerDatabase.h"
+#include "../db/ServerDatabase.h"
+
+#include "server/login/LoginServer.h"
+#include "server/login/account/Account.h"
 
 #include "conf/ConfigManager.h"
 
@@ -19,20 +22,28 @@
 #include "server/zone/managers/resource/ResourceManager.h"
 #include "server/zone/managers/crafting/CraftingManager.h"
 #include "server/zone/managers/loot/LootManager.h"
+#include "server/zone/managers/skill/SkillManager.h"
 #include "server/zone/managers/auction/AuctionManager.h"
+#include "server/zone/managers/minigames/FishingManager.h"
+#include "server/zone/managers/minigames/GamblingManager.h"
+#include "server/zone/managers/minigames/ForageManager.h"
 #include "server/zone/managers/mission/MissionManager.h"
 #include "server/zone/managers/creature/CreatureTemplateManager.h"
 #include "server/zone/managers/creature/DnaManager.h"
 #include "server/zone/managers/creature/PetManager.h"
 #include "server/zone/managers/guild/GuildManager.h"
+#include "server/zone/managers/creature/CreatureManager.h"
 #include "server/zone/managers/faction/FactionManager.h"
 #include "server/zone/managers/reaction/ReactionManager.h"
 #include "server/zone/managers/director/DirectorManager.h"
 #include "server/zone/managers/city/CityManager.h"
 #include "server/zone/managers/structure/StructureManager.h"
-#include "server/zone/managers/frs/FrsManager.h"
 
 #include "server/chat/ChatManager.h"
+#include "server/zone/objects/creature/CreatureObject.h"
+#include "server/zone/objects/creature/variables/Skill.h"
+
+#include "tre3/TreeDirectory.h"
 
 #include "server/zone/ZoneProcessServer.h"
 #include "ZonePacketHandler.h"
@@ -49,30 +60,30 @@ ZoneServerImplementation::ZoneServerImplementation(ConfigManager* config) :
 	galaxyID = config->getZoneGalaxyID();
 	galaxyName = "Core3";
 
-	processor = nullptr;
-
-
+	processor = NULL;
+	
+	
 	serverCap = 3000;
 
-	phandler = nullptr;
+	phandler = NULL;
 
 	datagramService = new DatagramServiceThread("ZoneServer");
 	datagramService->setLogging(false);
 	datagramService->setLockName("ZoneServerLock");
 
-	objectManager = nullptr;
-	playerManager = nullptr;
-	chatManager = nullptr;
-	radialManager = nullptr;
-	resourceManager = nullptr;
-	craftingManager = nullptr;
-	lootManager = nullptr;
+	objectManager = NULL;
+	playerManager = NULL;
+	chatManager = NULL;
+	radialManager = NULL;
+	resourceManager = NULL;
+	craftingManager = NULL;
+	lootManager = NULL;
 
-	stringIdManager = nullptr;
-	creatureTemplateManager = nullptr;
-	guildManager = nullptr;
-	cityManager = nullptr;
-	petManager = nullptr;
+	stringIdManager = NULL;
+	creatureTemplateManager = NULL;
+	guildManager = NULL;
+	cityManager = NULL;
+	petManager = NULL;
 
 	totalSentPackets = 0;
 	totalResentPackets = 0;
@@ -83,32 +94,32 @@ ZoneServerImplementation::ZoneServerImplementation(ConfigManager* config) :
 	totalDeletedPlayers = 0;
 
 	serverState = OFFLINE;
-	deleteNavAreas = false;
+	deleteNavRegions = false;
 
-	setLogLevel(Logger::INFO);
+	setLogging(true);
 }
 
 void ZoneServerImplementation::initializeTransientMembers() {
-	phandler = nullptr;
+	phandler = NULL;
 
-	objectManager = nullptr;
+	objectManager = NULL;
 
-	deleteNavAreas = false;
+	deleteNavRegions = false;
 
 	ManagedObjectImplementation::initializeTransientMembers();
 }
 
 void ZoneServerImplementation::loadGalaxyName() {
 	try {
-		const String query = "SELECT name FROM galaxy WHERE galaxy_id = " + String::valueOf(galaxyID);
+		String query = "SELECT name FROM galaxy WHERE galaxy_id = " + String::valueOf(galaxyID);
 
-		UniqueReference<ResultSet*> result(ServerDatabase::instance()->executeQuery(query));
+		Reference<ResultSet*> result = ServerDatabase::instance()->executeQuery(query);
 
 		if (result->next())
 			galaxyName = result->getString(0);
 
-	} catch (const DatabaseException& e) {
-		fatal(e.getMessage());
+	} catch (DatabaseException& e) {
+		info(e.getMessage());
 	}
 
 	setLoggingName("ZoneServer " + galaxyName);
@@ -151,7 +162,7 @@ void ZoneServerImplementation::initialize() {
 	chatManager->deploy("ChatManager");
 	chatManager->initiateRooms();
 
-	playerManager = new PlayerManager(_this.getReferenceUnsafeStaticCast(), processor, true);
+	playerManager = new PlayerManager(_this.getReferenceUnsafeStaticCast(), processor);
 	playerManager->deploy("PlayerManager");
 
 	chatManager->setPlayerManager(playerManager);
@@ -194,13 +205,13 @@ void ZoneServerImplementation::initialize() {
 void ZoneServerImplementation::startZones() {
 	info("Loading zones.");
 
-	auto enabledZones = configManager->getEnabledZones();
+	SortedVector<String>* enabledZones = configManager->getEnabledZones();
 
 	StructureManager* structureManager = StructureManager::instance();
 	structureManager->setZoneServer(_this.getReferenceUnsafeStaticCast());
 
-	for (int i = 0; i < enabledZones.size(); ++i) {
-		String zoneName = enabledZones.get(i);
+	for (int i = 0; i < enabledZones->size(); ++i) {
+		String zoneName = enabledZones->get(i);
 
 		info("Loading zone " + zoneName + ".");
 
@@ -216,7 +227,7 @@ void ZoneServerImplementation::startZones() {
 
 	for (int i = 0; i < zones->size(); ++i) {
 		Zone* zone = zones->get(i);
-		if (zone != nullptr) {
+		if (zone != NULL) {
 			ZoneLoadManagersTask* task = new ZoneLoadManagersTask(_this.getReferenceUnsafeStaticCast(), zone);
 			task->execute();
 		}
@@ -225,7 +236,7 @@ void ZoneServerImplementation::startZones() {
 	for (int i = 0; i < zones->size(); ++i) {
 		Zone* zone = zones->get(i);
 
-		if (zone != nullptr) {
+		if (zone != NULL) {
 			while (!zone->hasManagersStarted())
 				Thread::sleep(500);
 		}
@@ -250,24 +261,21 @@ void ZoneServerImplementation::startManagers() {
 	//Loads the FactionManager LUA Config.
 	FactionManager::instance()->loadData();
 
+	cityManager->loadCityRegions();
+
+	for (int i = 0; i < zones->size(); ++i) {
+		Zone* zone = zones->get(i);
+		if (zone != NULL) {
+			zone->updateCityRegions();
+		}
+	}
+
 	//Start global screen plays
 	DirectorManager::instance()->loadPersistentEvents();
 	DirectorManager::instance()->loadPersistentStatus();
 	DirectorManager::instance()->startGlobalScreenPlays();
 
-	cityManager->loadCityRegions();
-
-	for (int i = 0; i < zones->size(); ++i) {
-		Zone* zone = zones->get(i);
-		if (zone != nullptr) {
-			zone->updateCityRegions();
-		}
-	}
-
 	auctionManager->initialize();
-
-	frsManager = new FrsManager(_this.getReferenceUnsafeStaticCast());
-	frsManager->initialize();
 }
 
 void ZoneServerImplementation::start(int p, int mconn) {
@@ -299,12 +307,12 @@ void ZoneServerImplementation::timedShutdown(int minutes) {
 		String str = "Server will shutdown in " + String::valueOf(minutes) + " minutes";
 		Logger::console.info(str, true);
 
-		getChatManager()->broadcastGalaxy(nullptr, str);
+		getChatManager()->broadcastGalaxy(NULL, str);
 	}
 }
 
 void ZoneServerImplementation::shutdown() {
-	//datagramService->setHandler(nullptr);
+	//datagramService->setHandler(NULL);
 
 	stopManagers();
 
@@ -313,10 +321,9 @@ void ZoneServerImplementation::shutdown() {
 	for (int i = 0; i < zones->size(); ++i) {
 		ManagedReference<Zone*> zone = zones->get(i);
 
-		if (zone != nullptr) {
+		if (zone != NULL) {
 			zone->stopManagers();
-
-			debug() << "zone references " << zone->getReferenceCount();
+			//info("zone references " + String::valueOf(zone->getReferenceCount()), true);
 		}
 	}
 
@@ -326,7 +333,7 @@ void ZoneServerImplementation::shutdown() {
 
 	printInfo();
 
-	datagramService = nullptr;
+	datagramService = NULL;
 
 	info("shut down complete", true);
 }
@@ -334,66 +341,61 @@ void ZoneServerImplementation::shutdown() {
 void ZoneServerImplementation::stopManagers() {
 	info("stopping managers..", true);
 
-	missionManager = nullptr;
-	radialManager = nullptr;
-	auctionManager = nullptr;
-	petManager = nullptr;
-	reactionManager = nullptr;
+	missionManager = NULL;
+	radialManager = NULL;
+	auctionManager = NULL;
+	petManager = NULL;
+	reactionManager = NULL;
+	creatureTemplateManager = NULL;
+	dnaManager = NULL;
+	stringIdManager = NULL;
+	zoneHandler = NULL;
+	configManager = NULL;
+	phandler = NULL;
 
-	if (frsManager != nullptr) {
-		frsManager = nullptr;
-	}
-
-	creatureTemplateManager = nullptr;
-	dnaManager = nullptr;
-	stringIdManager = nullptr;
-	zoneHandler = nullptr;
-	configManager = nullptr;
-	phandler = nullptr;
-
-	if (guildManager != nullptr) {
+	if (guildManager != NULL) {
 		guildManager->stop();
-		guildManager = nullptr;
+		guildManager = NULL;
 	}
 
-	if (cityManager != nullptr) {
+	if (cityManager != NULL) {
 		cityManager->stop();
-		cityManager = nullptr;
+		cityManager = NULL;
 	}
 
-	if (chatManager != nullptr) {
+	if (chatManager != NULL) {
 		chatManager->stop();
-		chatManager = nullptr;
+		chatManager = NULL;
 	}
 
-	if (resourceManager != nullptr) {
+	if (resourceManager != NULL) {
 		resourceManager->stop();
-		resourceManager = nullptr;
+		resourceManager = NULL;
 	}
 
-	if (craftingManager != nullptr) {
+	if (craftingManager != NULL) {
 		craftingManager->stop();
-		craftingManager = nullptr;
+		craftingManager = NULL;
 	}
 
-	if (lootManager != nullptr) {
+	if (lootManager != NULL) {
 		lootManager->stop();
-		lootManager = nullptr;
+		lootManager = NULL;
 	}
 
-	if (playerManager != nullptr) {
+	if (playerManager != NULL) {
 		playerManager->finalize();
-		playerManager = nullptr;
+		playerManager = NULL;
 	}
 
-	if (processor != nullptr) {
+	if (processor != NULL) {
 		processor->stop();
-		processor = nullptr;
+		processor = NULL;
 	}
 
-	if (objectManager != nullptr) {
+	if (objectManager != NULL) {
 		objectManager->shutdown();
-		objectManager = nullptr;
+		objectManager = NULL;
 	}
 
 	info("managers stopped", true);
@@ -405,17 +407,17 @@ void ZoneServerImplementation::clearZones() {
 	for (int i = 0; i < zones->size(); ++i) {
 		ManagedReference<Zone*> zone = zones->get(i);
 
-		if (zone != nullptr) {
-			Core::getTaskManager()->executeTask([=] () {
-				zone->clearZone();
-			}, "ClearZoneLambda");
+		if (zone != NULL) {
+			EXECUTE_TASK_1(zone, {
+					zone_p->clearZone();
+			});
 		}
 	}
 
 	for (int i = 0; i < zones->size(); ++i) {
 		Zone* zone = zones->get(i);
 
-		if (zone != nullptr) {
+		if (zone != NULL) {
 			while (!zone->isZoneCleared())
 				Thread::sleep(500);
 		}
@@ -426,7 +428,7 @@ void ZoneServerImplementation::clearZones() {
 
 ZoneClientSession* ZoneServerImplementation::createConnection(Socket* sock, SocketAddress& addr) {
 	/*if (!userManager->checkUser(addr.getIPID()))
-		return nullptr;*/
+		return NULL;*/
 
 	BaseClientProxy* session = new BaseClientProxy(sock, addr);
 
@@ -443,9 +445,9 @@ ZoneClientSession* ZoneServerImplementation::createConnection(Socket* sock, Sock
 	//client->deploy("ZoneClientSession " + addr.getFullIPAddress());
 	//client->deploy();
 
-	const auto& address = session->getAddress();
+	String address = session->getAddress();
 
-	debug() << "client connected from \'" << address << "\'";
+	//info("client connected from \'" + address + "\'");
 
 	return client;
 }
@@ -474,17 +476,17 @@ void ZoneServerImplementation::handleMessage(ZoneClientSession* client, Packet* 
 void ZoneServerImplementation::processMessage(Message* message) {
 	ZonePacketHandler* zonePacketHandler = processor->getPacketHandler();
 
-	auto client = zoneHandler->getClientSession(message->getClient());
+	ZoneClientSession* client = zoneHandler->getClientSession(message->getClient());
 
 	Task* task = zonePacketHandler->generateMessageTask(client, message);
 
-	if (task != nullptr) {
-		auto taskManager = Core::getTaskManager();
+	if (task != NULL) {
+		int queue = ((MessageCallback*)task)->getTaskQueue();
 
-		if (taskManager) {
-			taskManager->executeTask(task);
+		if (queue >= 0) {
+			Core::getTaskManager()->executeTask(task, queue);
 		} else {
-			delete task;
+			Core::getTaskManager()->executeTask(task);
 		}
 	}
 
@@ -500,7 +502,7 @@ bool ZoneServerImplementation::handleError(ZoneClientSession* client, Exception&
 }
 
 Reference<SceneObject*> ZoneServerImplementation::getObject(uint64 oid, bool doLock) {
-	Reference<SceneObject*> obj = nullptr;
+	Reference<SceneObject*> obj = NULL;
 
 	if (isServerShuttingDown())
 		return obj;
@@ -510,17 +512,17 @@ Reference<SceneObject*> ZoneServerImplementation::getObject(uint64 oid, bool doL
 
 		Reference<DistributedObject*> distributedObject = Core::getObjectBroker()->lookUp(oid);
 
-		if (distributedObject != nullptr) {
+		if (distributedObject != NULL) {
 			obj = dynamic_cast<SceneObject*>(distributedObject.get()); // only for debug purposes
 
-			if (obj == nullptr) {
+			if (obj == NULL) {
 				error("trying to lookup object that is not an SceneObject");
 				StackTrace::printStackTrace();
 			}
 		}
 
 		//unlock(doLock);
-	} catch (const Exception& e) {
+	} catch (Exception& e) {
 		//unlock(doLock);
 		error(e.getMessage());
 		e.printStackTrace();
@@ -538,7 +540,7 @@ void ZoneServerImplementation::updateObjectToStaticDatabase(SceneObject* object)
 }
 
 Reference<SceneObject*> ZoneServerImplementation::createObject(uint32 templateCRC, const String& dbname, int persistenceLevel ){
-	Reference<SceneObject*> obj = nullptr;
+	Reference<SceneObject*> obj = NULL;
 
 	try {
 		//lock(); ObjectManager has its own mutex
@@ -557,7 +559,7 @@ Reference<SceneObject*> ZoneServerImplementation::createObject(uint32 templateCR
 }
 
 Reference<SceneObject*> ZoneServerImplementation::createObject(uint32 templateCRC, int persistenceLevel, uint64 oid) {
-	Reference<SceneObject*> obj = nullptr;
+	Reference<SceneObject*> obj = NULL;
 
 	try {
 		//lock(); ObjectManager has its own mutex
@@ -576,14 +578,13 @@ Reference<SceneObject*> ZoneServerImplementation::createObject(uint32 templateCR
 }
 
 Reference<SceneObject*> ZoneServerImplementation::createClientObject(uint32 templateCRC, uint64 oid) {
-	Reference<SceneObject*> obj = nullptr;
+	Reference<SceneObject*> obj = NULL;
 
 	try {
 		//lock(); ObjectManager has its own mutex
 
-		obj = objectManager->createObject(templateCRC, 1, "clientobjects", oid, false);
+		obj = objectManager->createObject(templateCRC, 1, "clientobjects", oid);
 		obj->setClientObject(true);
-		obj->initializeTransientMembers();
 
 		//unlock();
 	} catch (Exception& e) {
@@ -634,11 +635,8 @@ int ZoneServerImplementation::getConnectionCount() {
 void ZoneServerImplementation::printInfo() {
 	lock();
 
-	TaskManager* taskMgr = Core::getTaskManager();
 	StringBuffer msg;
-
-	if (taskMgr != nullptr)
-		msg << taskMgr->getInfo(false) << endl;
+	msg << Core::getTaskManager()->getInfo(false) << endl;
 	//msg << "MessageQueue - size = " << processor->getMessageQueue()->size() << endl;
 
 	float packetloss;
@@ -658,7 +656,7 @@ void ZoneServerImplementation::printInfo() {
 #ifndef WITH_STM
 	msg << ObjectManager::instance()->getInfo() << endl;
 
-	if (playerManager != nullptr)
+	if (playerManager != NULL)
 		msg << dec << playerManager->getOnlineZoneClientMap()->getDistinctIps() << " total distinct ips connected";
 #endif
 
@@ -765,7 +763,7 @@ void ZoneServerImplementation::setServerStateShuttingDown() {
 	info(msg, true);
 }
 
-String ZoneServerImplementation::getLoginMessage() const {
+String ZoneServerImplementation::getLoginMessage() {
 	return loginMessage;
 }
 
@@ -786,8 +784,8 @@ void ZoneServerImplementation::loadLoginMessage() {
 
 		reader->close();
 	} catch (FileNotFoundException& e) {
-		file = nullptr;
-		reader = nullptr;
+		file = NULL;
+		reader = NULL;
 	}
 
 	loginMessage += "\nLatest Commits:\n";
@@ -828,8 +826,8 @@ void ZoneServerImplementation::changeLoginMessage(const String& motd) {
 
 		writer->close();
 	} catch (FileNotFoundException& e) {
-		file = nullptr;
-		writer = nullptr;
+		file = NULL;
+		writer = NULL;
 	}
 
 	loginMessage = finalMOTD;

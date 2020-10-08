@@ -13,6 +13,8 @@
 #ifndef AREATRACKTASK_H_
 #define AREATRACKTASK_H_
 
+#include "server/zone/packets/player/LogoutMessage.h"
+
 class AreaTrackTask: public Task {
 	ManagedReference<CreatureObject*> player;
 	int type;
@@ -36,7 +38,7 @@ public:
 				return;
 
 			Zone* zone = player->getZone();
-			if (zone == nullptr)
+			if (zone == NULL)
 				return;
 
 			if (player->getDistanceTo(&initialPosition) > 1) {
@@ -81,7 +83,7 @@ public:
 				}
 
 				CreatureObject* creature = cast<CreatureObject*>(object);
-				if(creature == nullptr || creature->isInvisible())
+				if(creature == NULL || creature->isInvisible())
 					continue;
 
 				if(type == 0) {
@@ -130,13 +132,10 @@ public:
 
 	String getDirection(CreatureObject* tracker, CreatureObject* trackee) {
 		String direction;
-		auto trackeeWorldPosition = trackee->getWorldPosition();
-		auto trackerWorldPosition = tracker->getWorldPosition();
-
-		float trackerX = trackerWorldPosition.getX();
-		float trackerY = trackerWorldPosition.getY();
-		float trackeeX = trackeeWorldPosition.getX();
-		float trackeeY = trackeeWorldPosition.getY();
+		float trackerX = tracker->getPositionX();
+		float trackerY = tracker->getPositionY();
+		float trackeeX = trackee->getPositionX();
+		float trackeeY = trackee->getPositionY();
 
 		// transform points so the origin is the tracker's position
 		float transformedX = trackeeX - trackerX;

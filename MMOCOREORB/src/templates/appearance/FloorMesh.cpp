@@ -6,9 +6,8 @@
  */
 
 #include "FloorMesh.h"
-#include "templates/appearance/MeshData.h"
 
-#define BARRIER_HEIGHT 3
+#include "templates/appearance/MeshAppearanceTemplate.h"
 
 void FloorMeshTriangleNode::readObject(IffStream* iffStream) {
 	indicies[0] = iffStream->getInt(); // Corner Index[0]
@@ -16,15 +15,15 @@ void FloorMeshTriangleNode::readObject(IffStream* iffStream) {
 	indicies[2] = iffStream->getInt(); // Corner Index[2]
 
 	Vector3 tri[3];
-	tri[0] = *mesh->getVertex(indicies[0]);
-	tri[1] = *mesh->getVertex(indicies[1]);
-	tri[2] = *mesh->getVertex(indicies[2]);
+	tri[0] = mesh->getVertex(indicies[0])->getPosition();
+	tri[1] = mesh->getVertex(indicies[1])->getPosition();
+	tri[2] = mesh->getVertex(indicies[2])->getPosition();
 	set(tri);
 
 	triangleID = iffStream->getUnsignedInt(); // Triangle Index
 
-	edges[0].neighbor = iffStream->getInt();
-	edges[1].neighbor = iffStream->getInt();
+	edges[0].neighbor = iffStream->getInt(); 
+	edges[1].neighbor = iffStream->getInt(); 
 	edges[2].neighbor = iffStream->getInt();
 
 	normal.setX(iffStream->getFloat());
@@ -39,8 +38,8 @@ void FloorMeshTriangleNode::readObject(IffStream* iffStream) {
 
 	tag = iffStream->getInt();
 
-	edges[0].portalID = iffStream->getInt();
-	edges[1].portalID = iffStream->getInt();
+	edges[0].portalID = iffStream->getInt(); 
+	edges[1].portalID = iffStream->getInt(); 
 	edges[2].portalID = iffStream->getInt();
 
 	for(int i=0; i<3; i++) {
@@ -61,8 +60,8 @@ void FloorMeshTriangleNode::readObject(IffStream* iffStream) {
 
 FloorMesh::FloorMesh() {
 	setLoggingName("FloorMesh");
-	pathGraph = nullptr;
-	aabbTree = nullptr;
+	pathGraph = NULL;
+	aabbTree = NULL;
 	connectedEdges.setInsertPlan(SortedVector<EdgeID>::NO_DUPLICATE);
 	uncrossableEdges.setInsertPlan(SortedVector<EdgeID>::NO_DUPLICATE);
 	blockingEdges.setInsertPlan(SortedVector<EdgeID>::NO_DUPLICATE);
@@ -71,13 +70,13 @@ FloorMesh::FloorMesh() {
 }
 
 FloorMesh::~FloorMesh() {
-	if (pathGraph != nullptr) {
+	if (pathGraph != NULL) {
 		delete pathGraph;
-		pathGraph = nullptr;
+		pathGraph = NULL;
 	}
 
 	delete aabbTree;
-	aabbTree = nullptr;
+	aabbTree = NULL;
 
 	for (int i = 0; i < tris.size(); ++i)
 		delete tris.get(i);
@@ -95,17 +94,14 @@ void FloorMesh::readObject(IffStream* iffStream) {
 	case '0005':
 		parseVersion0005(iffStream);
 		break;
-	case '0003':
-		parseVersion0003(iffStream);
-		break;
 	default:
-		error("unkown FloorMesh version " + String::hexvalueOf((int)nextFormType) + " in file " + iffStream->getFileName());
+		error("unkown FloorMesh version " + String::hexvalueOf((int)nextFormType));
 		break;
 	}
 
 	// Generating our own tree from triangles
 
-	Vector<Triangle*> triangles(tris.size(), 1);
+	Vector<Triangle*> triangles;
 
 	for (int i = 0; i < tris.size(); ++i) {
 		FloorMeshTriangleNode* tri = tris.get(i);
@@ -126,7 +122,7 @@ void FloorMesh::readObject(IffStream* iffStream) {
 	}*/
 
 	//tris.removeAll(1, 1);
-	//vertices.removeAll(1, 1);
+	vertices.removeAll(1, 1);
 
 	AABBTreeHeuristic heurData;
 	heurData.maxdepth = 2; // maximum depth
@@ -140,18 +136,18 @@ void FloorMesh::readObject(IffStream* iffStream) {
 	iffStream->closeForm('FLOR');
 }
 
-const Vector<TriangleNode*>* FloorMesh::getNeighbors(uint32 triangleID) const {
+Vector<TriangleNode*>* FloorMesh::getNeighbors(uint32 triangleID) {
 	TriangleNode* triangle = tris.get(triangleID);
 
 	return triangle->getNeighbors();
 }
 
-const TriangleNode* FloorMesh::findNearestTriangle(const Vector3& point) const {
+TriangleNode* FloorMesh::findNearestTriangle(const Vector3& point) {
 	float dist = MAX_FLOAT;
-	const TriangleNode* found = nullptr;
+	TriangleNode* found = NULL;
 
 	for (int i = 0; i < tris.size(); ++i) {
-		const TriangleNode* node = tris.getUnsafe(i);
+		TriangleNode* node = tris.get(i);
 
 		Vector3 bary = node->getBarycenter();
 
@@ -163,58 +159,14 @@ const TriangleNode* FloorMesh::findNearestTriangle(const Vector3& point) const {
 		}
 	}
 
-	if (found == nullptr) {
-		error() << "ERROR findNearestTriangle nullptr tris.size() = " << tris.size() << "point: x:" << point.getX() << " y:"
+	if (found == NULL) {
+		System::out << "ERROR findNearestTriangle NULL tris.size() = " << tris.size() << "point: x:" << point.getX() << " y:"
 				<< point.getY() << " z:" << point.getZ() << endl;
 
 		StackTrace::printStackTrace();
 	}
 
 	return found;
-}
-
-void FloorMesh::parseVersion0003(IffStream* iffStream) {
-	try {
-		iffStream->openForm('0003');
-
-		Chunk* vertData = iffStream->openChunk('VERT');
-
-		int vertSize = vertData->getChunkSize();
-
-		while (vertSize > 0) {
-			vertices.add(iffStream->getVector3());
-			vertSize -= 12;
-		}
-
-		iffStream->closeChunk();
-
-		Chunk* trisData = iffStream->openChunk('TRIS');
-
-		int trisDataSize = trisData->getChunkSize();
-
-		tris.removeAll(trisDataSize / 60);
-
-		while (trisDataSize > 0) {
-			FloorMeshTriangleNode* tri = new FloorMeshTriangleNode(this);
-
-			tri->readObject(iffStream);
-
-			tris.add(tri);
-
-			trisDataSize -= 60;
-		}
-
-		iffStream->closeChunk();
-
-		iffStream->closeForm('0003');
-	} catch (Exception& e) {
-		String err = "unable to parse file ";
-		err += iffStream->getFileName();
-		error(err);
-
-		error(e.getMessage());
-		e.printStackTrace();
-	}
 }
 
 void FloorMesh::parseVersion0005(IffStream* iffStream) {
@@ -225,10 +177,12 @@ void FloorMesh::parseVersion0005(IffStream* iffStream) {
 
 		int vertSize = vertData->getChunkSize();
 
-		vertices.removeAll(vertSize);
-
 		while (vertSize > 0) {
-			vertices.add(iffStream->getVector3());
+			Vert vert;
+			vert.readObject(iffStream);
+
+			vertices.add(vert);
+
 			vertSize -= 12;
 		}
 
@@ -237,8 +191,6 @@ void FloorMesh::parseVersion0005(IffStream* iffStream) {
 		Chunk* trisData = iffStream->openChunk('TRIS');
 
 		int trisDataSize = trisData->getChunkSize();
-
-		tris.removeAll(trisDataSize / 60);
 
 		while (trisDataSize > 0) {
 			FloorMeshTriangleNode* tri = new FloorMeshTriangleNode(this);
@@ -277,10 +229,11 @@ void FloorMesh::parseVersion0006(IffStream* iffStream) {
 
 		int verticesSize = data->readInt();
 
-		vertices.removeAll(verticesSize);
-
 		for (int i = 0; i < verticesSize; ++i) {
-			vertices.add(iffStream->getVector3());
+			Vert vert;
+			vert.readObject(iffStream);
+
+			vertices.add(vert);
 		}
 
 		iffStream->closeChunk();
@@ -288,8 +241,6 @@ void FloorMesh::parseVersion0006(IffStream* iffStream) {
 		iffStream->openChunk('TRIS');
 
 		int trisCount = iffStream->getInt();
-
-		tris.removeAll(trisCount);
 
 		for (int i = 0; i < trisCount; ++i) {
 			FloorMeshTriangleNode* tri = new FloorMeshTriangleNode(this);
@@ -382,75 +333,14 @@ void FloorMesh::parsePGRF(IffStream* iffStream) {
 	pathGraph->readObject(iffStream);
 }
 
-const PathNode* FloorMesh::getGlobalNode(int globalID) const {
+PathNode* FloorMesh::getGlobalNode(int globalID) {
 	return pathGraph->findGlobalNode(globalID);
 }
 
-bool FloorMesh::testCollide(float x, float z, float y, float radius) const {
+bool FloorMesh::testCollide(float x, float z, float y, float radius) {
 	Vector3 point(x, z, y);
 
 	Sphere sphere(point, radius);
 
 	return aabbTree->testCollide(sphere);
-}
-
-Vector <Reference<MeshData*>> FloorMesh::getTransformedMeshData(const Matrix4& parentTransform) const {
-	Reference<MeshData*> data = new MeshData();
-
-	Vector<Vector3> *vertices = data->getVerts();
-	Vector<MeshTriangle> *triangles = data->getTriangles();
-
-	for (const auto& edge : uncrossableEdges) {
-		const auto& tri = tris.get(edge.getTriangleID());
-		int startIndex = edge.getEdgeID() % 3;
-
-		Vector3 start = tri->getVertex(startIndex);
-		Vector3 end = tri->getVertex(startIndex < 2 ? startIndex + 1 : 0);
-
-		//negate z + transform
-		start.setZ(-start.getZ());
-		start = start * parentTransform;
-
-		end.setZ(-end.getZ());
-		end = end * parentTransform;
-
-		vertices->add(start);
-		vertices->add(end);
-		vertices->emplace(start.getX(), start.getY() + BARRIER_HEIGHT, start.getZ());
-		vertices->emplace(end.getX(), end.getY() + BARRIER_HEIGHT, end.getZ());
-
-		int ind = vertices->size() - 1;
-		triangles->emplace(ind - 1, ind - 2, ind - 3);
-		triangles->emplace(ind, ind - 2, ind - 1);
-	}
-
-	Vector<Reference<MeshData*>> meshData;
-	meshData.emplace(std::move(data));
-
-#ifdef RENDER_EXTERNAL_FLOOR_MESHES_ONLY
-	Reference<MeshData*> floorData = new MeshData();
-
-	Vector<Vector3>* floorVertices = floorData->getVerts();
-	floorVertices->removeAll(this->vertices.size() + 1);
-
-	Vector<MeshTriangle>* floorTriangles = floorData->getTriangles();
-	floorTriangles->removeAll(tris.size() + 1);
-
-	for (const auto& vert : this->vertices) {
-		Vector3 transformedVert = vert;
-
-		transformedVert.setZ(-transformedVert.getZ());
-		transformedVert = transformedVert * parentTransform;
-
-		floorVertices->add(transformedVert);
-	}
-
-	for (const auto& tri : tris) {
-		floorTriangles->emplace(tri->getIndex(0), tri->getIndex(1), tri->getIndex(2));
-	}
-
-	meshData.emplace(std::move(floorData));
-#endif
-
-	return meshData;
 }

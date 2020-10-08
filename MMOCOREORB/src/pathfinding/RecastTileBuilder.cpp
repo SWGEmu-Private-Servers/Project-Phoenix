@@ -17,9 +17,13 @@
 //
 
 #include "RecastTileBuilder.h"
+#include "pathfinding/recast/Recast.h"
+#include "pathfinding/recast/DetourNavMesh.h"
 #include "pathfinding/recast/DetourNavMeshBuilder.h"
+#include "pathfinding/recast/DetourNavMeshQuery.h"
 #include "templates/appearance/MeshData.h"
 #include "ChunkyTriMesh.h"
+#include "terrain/layer/boundaries/BoundaryPolygon.h"
 
 inline unsigned int nextPow2(unsigned int v) {
 	v--;
@@ -135,6 +139,7 @@ void RecastTileBuilder::cleanup() {
 }
 
 unsigned char* RecastTileBuilder::build(float x, float y, const AABB& lastTileBounds, int& dataSize) {
+
 	int gw = 0, gh = 0;
 
 	float bmin[3];
@@ -157,6 +162,7 @@ unsigned char* RecastTileBuilder::build(float x, float y, const AABB& lastTileBo
 	// Max tiles and max polys affect how the tile IDs are caculated.
 	// There are 22 bits available for identifying a tile and a polygon.
 	int tileBits = rcMin((int) ilog2(nextPow2(tw * th)), 14);
+	if (tileBits > 14) tileBits = 14;
 	int polyBits = 22 - tileBits;
 	m_maxTiles = 1<<tileBits;
 	m_maxPolysPerTile = 1<<polyBits;
@@ -270,7 +276,7 @@ unsigned char* RecastTileBuilder::buildTileMesh(const int tx, const int ty, int&
 	float* verts = new float[nverts * 3];//m_geom->getMesh()->getVerts();
 
 	for (int i = 0; i < nverts; i++) {
-		const Vector3& vert = vertArray->getUnsafe(i);
+		const Vector3& vert = vertArray->get(i);
 		verts[i * 3 + 0] = vert.getX();
 		verts[i * 3 + 1] = vert.getY();
 		verts[i * 3 + 2] = vert.getZ();

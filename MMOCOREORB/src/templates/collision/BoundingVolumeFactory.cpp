@@ -1,17 +1,24 @@
 #include "BoundingVolumeFactory.h"
 #include "BaseBoundingVolume.h"
-#include "templates/collision/BoundingVolumes.h"
+#include "BoxVolume.h"
+#include "SphereVolume.h"
+#include "DetailVolume.h"
+#include "CompositeVolume.h"
+#include "ComponentVolume.h"
+#include "CylinderVolume.h"
+#include "CollisionMeshVolume.h"
+
 
 BaseBoundingVolume* BoundingVolumeFactory::getVolume(IffStream *iff) {
 	static Logger logger("BoundingVolumeFactory");
 
-	BaseBoundingVolume *volume = nullptr;
+	BaseBoundingVolume *volume = NULL;
 	uint32 type = iff->getNextFormType();
 	switch(type) {
 		case 'NULL':
 			iff->openForm('NULL');
 			iff->closeForm('NULL');
-			return nullptr;
+			return NULL;
 		case 'EXBX':
 			volume = new BoxVolume();
 			break;
@@ -38,7 +45,7 @@ BaseBoundingVolume* BoundingVolumeFactory::getVolume(IffStream *iff) {
 			logger.error(iff->getFileName() + " - INVALID VOLUME TYPE " + String::hexvalueOf((int64)type));
 			iff->openForm(type);
 			iff->closeForm(type);
-			return nullptr;
+			return NULL;
 		}
 	}
 	iff->openForm(type);

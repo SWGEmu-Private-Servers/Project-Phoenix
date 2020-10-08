@@ -9,23 +9,25 @@
 #include "server/zone/managers/loot/LootManager.h"
 #include "server/zone/managers/resource/ResourceManager.h"
 #include "server/zone/managers/minigames/events/ForagingEvent.h"
+#include "server/zone/objects/area/ForageArea.h"
 #include "server/zone/objects/area/ForageAreaCollection.h"
 #include "templates/params/creature/CreatureAttribute.h"
-#include "server/zone/Zone.h"
+#include "server/zone/objects/area/ActiveArea.h"
+#include "server/zone/managers/player/PlayerManager.h"
 
 void ForageManagerImplementation::startForaging(CreatureObject* player, int forageType) {
-	if (player == nullptr)
+	if (player == NULL)
 		return;
 
 	Locker playerLocker(player);
 
 	int actionCostForage = 50;
-	int mindCostShellfish = 100;
-	int actionCostShellfish =  100;
+	int mindCostShellfish = 50;
+	int actionCostShellfish =  50;
 
 	//Check if already foraging.
 	Reference<Task*> pendingForage = player->getPendingTask("foraging");
-	if (pendingForage != nullptr) {
+	if (pendingForage != NULL) {
 
 		if (forageType == ForageManager::SHELLFISH)
 			player->sendSystemMessage("@harvesting:busy");
@@ -98,7 +100,7 @@ void ForageManagerImplementation::startForaging(CreatureObject* player, int fora
 	//Queue the foraging task.
 	Zone* zone = player->getZone();
 
-	if (zone == nullptr)
+	if (zone == NULL)
 		return;
 
 	Reference<Task*> foragingEvent = new ForagingEvent(player, forageType, playerX, playerY, zone->getZoneName());
@@ -115,7 +117,7 @@ void ForageManagerImplementation::startForaging(CreatureObject* player, int fora
 }
 
 void ForageManagerImplementation::finishForaging(CreatureObject* player, int forageType, float forageX, float forageY, const String& zoneName) {
-	if (player == nullptr)
+	if (player == NULL)
 		return;
 
 	Locker playerLocker(player);
@@ -123,7 +125,7 @@ void ForageManagerImplementation::finishForaging(CreatureObject* player, int for
 
 	player->removePendingTask("foraging");
 
-	if (player->getZone() == nullptr)
+	if (player->getZone() == NULL)
 		return;
 
 	//Check if player moved.
@@ -146,7 +148,7 @@ void ForageManagerImplementation::finishForaging(CreatureObject* player, int for
 
 		Reference<ForageAreaCollection*> forageAreaCollection = forageAreas.get(player->getFirstName());
 
-		if (forageAreaCollection != nullptr) { //Player has foraged before.
+		if (forageAreaCollection != NULL) { //Player has foraged before.
 			if (!forageAreaCollection->checkForageAreas(forageX, forageY, zoneName, forageType)) {
 				if( forageType == LAIR ){
 					player->sendSystemMessage("There is nothing of interest remaining in the lair.");
@@ -178,14 +180,14 @@ void ForageManagerImplementation::finishForaging(CreatureObject* player, int for
 		chance = (int)(15 + (skillMod * 0.6));
 		break;
 	default:
-		skillMod = 20;
-		chance = (int)(15 + (skillMod * 0.6));
+		skillMod = 40;
+		chance = (int)(16 + (skillMod * 0.6));
 		break;
 	}
 
 	//Determine if player finds an item.
-	if (chance > 100) //There could possibly be +foraging skill tapes.
-		chance = 100;
+	if (chance > 125) //There could possibly be +foraging skill tapes.
+		chance = 125;
 
 	if (System::random(80) > chance) {
 		if (forageType == ForageManager::SHELLFISH)
@@ -198,7 +200,23 @@ void ForageManagerImplementation::finishForaging(CreatureObject* player, int for
 	} else {
 
 		forageGiveItems(player, forageType, forageX, forageY, zoneName);
-
+		
+		// Grant Wilderness Survival XP
+		ZoneServer* zoneServer = player->getZoneServer();
+		PlayerManager* playerManager = zoneServer->getPlayerManager();
+		
+		int xp = System::random(player->getSkillMod("foraging") + 50) + 50;
+		
+		if (forageType == ForageManager::SCOUT || forageType == ForageManager::SHELLFISH){
+			playerManager->awardExperience(player, "camp", xp);
+		}
+		else if (forageType == ForageManager::LAIR){
+			playerManager->awardExperience(player, "camp", (xp * 1.5));
+		}
+		else if (forageType == ForageManager::MEDICAL){
+			playerManager->awardExperience(player, "medical", xp);
+			playerManager->awardExperience(player, "camp", (xp / 2));
+		}
 	}
 
 	return;
@@ -206,7 +224,7 @@ void ForageManagerImplementation::finishForaging(CreatureObject* player, int for
 }
 
 bool ForageManagerImplementation::forageGiveItems(CreatureObject* player, int forageType, float forageX, float forageY, const String& planet) {
-	if (player == nullptr)
+	if (player == NULL)
 		return false;
 
 	Locker playerLocker(player);
@@ -214,7 +232,7 @@ bool ForageManagerImplementation::forageGiveItems(CreatureObject* player, int fo
 	ManagedReference<LootManager*> lootManager = player->getZoneServer()->getLootManager();
 	ManagedReference<SceneObject*> inventory = player->getSlottedObject("inventory");
 
-	if (lootManager == nullptr || inventory == nullptr) {
+	if (lootManager == NULL || inventory == NULL) {
 		player->sendSystemMessage("@skl_use:sys_forage_fail");
 		return false;
 	}
@@ -247,8 +265,6 @@ bool ForageManagerImplementation::forageGiveItems(CreatureObject* player, int fo
 	String lootGroup = "";
 	String resName = "";
 
-	TransactionLog trx(TrxCode::FORAGED, player);
-
 	if (forageType == ForageManager::SHELLFISH){
 		bool mullosks = false;
 		if (System::random(100) > 50) {
@@ -258,21 +274,20 @@ bool ForageManagerImplementation::forageGiveItems(CreatureObject* player, int fo
 		else
 			resName = "seafood_crustacean";
 
-		if(forageGiveResource(trx, player, forageX, forageY, planet, resName)) {
+		if(forageGiveResource(player, forageX, forageY, planet, resName)) {
 			if (mullosks)
 				player->sendSystemMessage("@harvesting:found_mollusks");
 			else
 				player->sendSystemMessage("@harvesting:found_crustaceans");
-			trx.commit(true);
 			return true;
 		}
 		else {
 			player->sendSystemMessage("@harvesting:found_nothing");
-			trx.discard();
 			return false;
 		}
 
 	}
+
 
 	if (forageType == ForageManager::SCOUT) {
 
@@ -288,7 +303,7 @@ bool ForageManagerImplementation::forageGiveItems(CreatureObject* player, int fo
 				lootGroup = "forage_rare";
 			}
 
-			lootManager->createLoot(trx, inventory, lootGroup, level);
+			lootManager->createLoot(inventory, lootGroup, level);
 		}
 
 	} else if (forageType == ForageManager::MEDICAL) { //Medical Forage
@@ -299,13 +314,11 @@ bool ForageManagerImplementation::forageGiveItems(CreatureObject* player, int fo
 			lootGroup = "forage_food";
 
 		} else if (dice > 39 && dice < 110) { //Resources.
-			if(forageGiveResource(trx, player, forageX, forageY, planet, resName)) {
+			if(forageGiveResource(player, forageX, forageY, planet, resName)) {
 				player->sendSystemMessage("@skl_use:sys_forage_success");
-				trx.commit(true);
 				return true;
 			} else {
 				player->sendSystemMessage("@skl_use:sys_forage_fail");
-				trx.discard();
 				return false;
 			}
 		} else if (dice > 109 && dice < 170) { //Average components.
@@ -319,54 +332,52 @@ bool ForageManagerImplementation::forageGiveItems(CreatureObject* player, int fo
 			level = 200;
 		}
 
-		lootManager->createLoot(trx, inventory, lootGroup, level);
+		lootManager->createLoot(inventory, lootGroup, level);
 
 	} else if (forageType == ForageManager::LAIR) { //Lair Search
 		dice = System::random(109);
 		level = 1;
+		float creatureHarvestingSkill = player->getSkillMod("creature_harvesting") + 1; // Makes it 1 even if it's NULL
+		
+		dice *= creatureHarvestingSkill / 450 + 1;
 
 		if (dice >= 0 && dice < 40) { // Live Creatures
 			lootGroup = "forage_live_creatures";
 		}
 		else if (dice > 39 && dice < 110) { // Eggs
 			resName = "meat_egg";
-			if(forageGiveResource(trx, player, forageX, forageY, planet, resName)) {
+			if(forageGiveResource(player, forageX, forageY, planet, resName)) {
 				player->sendSystemMessage("@lair_n:found_eggs");
-				trx.commit(true);
 				return true;
 			} else {
 				player->sendSystemMessage("@lair_n:found_nothing");
-				trx.discard();
 				return false;
 			}
 		}
 
-		if(!lootManager->createLoot(trx, inventory, lootGroup, level)) {
+		if(!lootManager->createLoot(inventory, lootGroup, level)) {
 			player->sendSystemMessage("Unable to create loot for lootgroup " + lootGroup);
-			trx.abort() << "Unabled to create loot for lootgroup " << lootGroup;
 			return false;
 		}
 
 		player->sendSystemMessage("@lair_n:found_bugs");
-		trx.commit(true);
 		return true;
 	}
 
 	player->sendSystemMessage("@skl_use:sys_forage_success");
-	trx.commit(true);
 	return true;
 }
 
-bool ForageManagerImplementation::forageGiveResource(TransactionLog& trx, CreatureObject* player, float forageX, float forageY, const String& planet, String& resType) {
-	if (player == nullptr)
+bool ForageManagerImplementation::forageGiveResource(CreatureObject* player, float forageX, float forageY, const String& planet, String& resType) {
+	if (player == NULL)
 		return false;
 
 	ManagedReference<ResourceManager*> resourceManager = player->getZoneServer()->getResourceManager();
 
-	if (resourceManager == nullptr)
+	if (resourceManager == NULL)
 		return false;
 
-	ManagedReference<ResourceSpawn*> resource = nullptr;
+	ManagedReference<ResourceSpawn*> resource = NULL;
 
 	if(resType.isEmpty()) {
 		//Get a list of the flora on the planet.
@@ -388,13 +399,13 @@ bool ForageManagerImplementation::forageGiveResource(TransactionLog& trx, Creatu
 			}
 		}
 	} else {
-		if(player->getZone() == nullptr)
+		if(player->getZone() == NULL)
 			return false;
 
 		resType = resType + "_" + player->getZone()->getZoneName();
 		resource = resourceManager->getCurrentSpawn(resType, player->getZone()->getZoneName());
 
-		if(resource == nullptr) {
+		if(resource == NULL) {
 			StringBuffer message;
 			message << "Resource type not available: " << resType << " on " << player->getZone()->getZoneName();
 			warning(message.toString());
@@ -402,7 +413,7 @@ bool ForageManagerImplementation::forageGiveResource(TransactionLog& trx, Creatu
 		}
 	}
 
-	int quantity = System::random(30) + 10;
-	resourceManager->harvestResourceToPlayer(trx, player, resource, quantity);
+	int quantity = System::random(30) + 300;
+	resourceManager->harvestResourceToPlayer(player, resource, quantity);
 	return true;
 }

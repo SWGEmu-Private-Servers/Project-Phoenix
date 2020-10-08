@@ -6,10 +6,12 @@
  */
 
 #include "PortalLayout.h"
+#include "templates/appearance/MeshAppearanceTemplate.h"
+#include "templates/appearance/PathNode.h"
+#include "templates/appearance/FloorMesh.h"
 #include "engine/util/u3d/AStarAlgorithm.h"
 
 void PortalLayout::readPortalGeometry0003(IffStream *iff, int numPortals) {
-	portalGeometry.removeAll(numPortals);
 
 	for(int i=0; i<numPortals; i++) {
 		iff->openChunk('PRTL');
@@ -22,8 +24,6 @@ void PortalLayout::readPortalGeometry0003(IffStream *iff, int numPortals) {
 
 		Vector3 min(50000, 50000, 50000);
 		Vector3 max(-50000, -50000, -50000);
-
-		verts->removeAll(size);
 
 		for (int i=0; i<size; i++) {
 			float x = iff->getFloat();
@@ -56,12 +56,10 @@ void PortalLayout::readPortalGeometry0003(IffStream *iff, int numPortals) {
 		portal->setBoundingBox(AABB(min, max));
 		Vector3 center = portal->getBoundingBox().center();
 
-		tris->removeAll(size * 2, 2);
-
 		for (int i=0; i<size; i++) {
 			Vector3 &vert = verts->get(i);
 
-			vert = center + ((vert - center) * 1.1f);
+			vert = center + ((vert - center) * 1.1);
 
 			// Triangle fan
 			if ( i >= 2) {
@@ -82,8 +80,8 @@ void PortalLayout::readPortalGeometry0003(IffStream *iff, int numPortals) {
 	}
 }
 
+
 void PortalLayout::readPortalGeometry0004(IffStream *iff, int numPortals) {
-	portalGeometry.removeAll(numPortals);
 
 	for(int i=0; i<numPortals; i++) {
 		iff->openForm('IDTL');
@@ -98,8 +96,6 @@ void PortalLayout::readPortalGeometry0004(IffStream *iff, int numPortals) {
 
 		Vector3 min(50000, 50000, 50000);
 		Vector3 max(-50000, -50000, -50000);
-
-		verts->removeAll(size);
 
 		for (int i=0; i<size; i++) {
 			float x = iff->getFloat();
@@ -137,8 +133,6 @@ void PortalLayout::readPortalGeometry0004(IffStream *iff, int numPortals) {
 
 		uint32 numIdx = indxChunk->getChunkSize() / 12;
 
-		tris->removeAll(numIdx);
-
 		for (int i=0; i<numIdx; i++) {
 			int a = iff->getInt();
 			int b = iff->getInt();
@@ -153,16 +147,15 @@ void PortalLayout::readPortalGeometry0004(IffStream *iff, int numPortals) {
 		portalGeometry.add(portal);
 	}
 }
-
 PortalLayout::PortalLayout() {
-	pathGraph = nullptr;
+	pathGraph = NULL;
 
 	setLoggingName("PortalLayout");
 }
 
 PortalLayout::~PortalLayout() {
 	delete pathGraph;
-	pathGraph = nullptr;
+	pathGraph = NULL;
 }
 
 void PortalLayout::parse(IffStream* iffStream) {
@@ -205,7 +198,7 @@ void PortalLayout::parse(IffStream* iffStream) {
 		uint32 nextType = iffStream->getNextFormType();
 
 		if (nextType == 'PGRF') {
-			pathGraph = new PathGraph(nullptr);
+			pathGraph = new PathGraph(NULL);
 			pathGraph->readObject(iffStream);
 		}
 
@@ -218,33 +211,14 @@ void PortalLayout::parse(IffStream* iffStream) {
 		error(err);
 	}
 
-	for (auto& cell : cellProperties) {
-		for (int i=0; i<cell->getNumberOfPortals(); i++) {
-			const CellPortal* portal = cell->getPortal(i);
-			int idx = portal->getGeometryIndex();
-
-			for (auto& connected : cellProperties) {
-				if (cell == connected)
-					continue;
-
-				for (int j=0; j<connected->getNumberOfPortals(); j++) {
-					const CellPortal* connectedPortal = connected->getPortal(j);
-					if (connectedPortal->getGeometryIndex() == idx) {
-						cell->addConnectedCell(connected->getCellID());
-					}
-				}
-			}
-		}
-	}
-
 	connectFloorMeshGraphs();
 }
 
-int PortalLayout::getCellID(const String& cellName) const {
+int PortalLayout::getCellID(const String& cellName) {
 	for (int i = 0; i < cellProperties.size(); ++i) {
-		CellProperty* cell = cellProperties.get(i);
+		CellProperty& cell = cellProperties.get(i);
 
-		if (cell->getName() == cellName)
+		if (cell.getName() == cellName)
 			return i;
 	}
 
@@ -255,12 +229,12 @@ void PortalLayout::connectFloorMeshGraphs() {
 	for (int i = 0; i < cellProperties.size(); ++i) {
 		FloorMesh* floorMesh = getFloorMesh(i);
 
-		if (floorMesh == nullptr)
+		if (floorMesh == NULL)
 			continue;
 
 		PathGraph* pathGraph = floorMesh->getPathGraph();
 
-		if (pathGraph == nullptr)
+		if (pathGraph == NULL)
 			continue;
 
 		Vector<PathNode*> globalNodes = pathGraph->getGlobalNodes();
@@ -274,10 +248,10 @@ void PortalLayout::connectFloorMeshGraphs() {
 				if (i != k) {
 					FloorMesh* newMesh = getFloorMesh(k);
 
-					if (newMesh != nullptr) {
+					if (newMesh != NULL) {
 						PathGraph* newPathGraph = newMesh->getPathGraph();
 
-						if (newPathGraph != nullptr) {
+						if (newPathGraph != NULL) {
 							Vector<PathNode*> newGlobalNodes = newPathGraph->getGlobalNodes();
 
 							for (int l = 0; l < newGlobalNodes.size(); ++l) {
@@ -294,17 +268,18 @@ void PortalLayout::connectFloorMeshGraphs() {
 			}
 		}
 	}
+
 }
 
-int PortalLayout::getFloorMeshID(int globalNodeID, int floorMeshToExclude) const {
+int PortalLayout::getFloorMeshID(int globalNodeID, int floorMeshToExclude) {
 	for (int i = 0; i < cellProperties.size(); ++i) {
 		if (i == floorMeshToExclude)
 			continue;
 
-		const FloorMesh* floorMesh = getFloorMesh(i);
-		const PathNode* node = floorMesh->getGlobalNode(globalNodeID);
+		FloorMesh* floorMesh = getFloorMesh(i);
+		PathNode* node = floorMesh->getGlobalNode(globalNodeID);
 
-		if (node != nullptr)
+		if (node != NULL)
 			return i;
 	}
 
@@ -318,8 +293,8 @@ void PortalLayout::parseCELSForm(IffStream* iffStream, int numCells) {
 		uint32 nextType;
 
 		for (int i=0; i<numCells; i++) {
-			Reference<CellProperty*> cell = new CellProperty(cellProperties.size());
-			cell->readObject(iffStream);
+			CellProperty cell(cellProperties.size());
+			cell.readObject(iffStream);
 			cellProperties.add(cell);
 		}
 
@@ -334,7 +309,7 @@ void PortalLayout::parseCELSForm(IffStream* iffStream, int numCells) {
 	}
 }
 
-Vector<const PathNode*>* PortalLayout::getPath(const PathNode* node1, const PathNode* node2) const {
+Vector<PathNode*>* PortalLayout::getPath(PathNode* node1, PathNode* node2) {
 	return AStarAlgorithm<PathGraph, PathNode>::search<uint32>(node1->getPathGraph(), node1, node2);
 }
 
@@ -346,13 +321,13 @@ uint32 PortalLayout::loadCRC(IffStream* iffStream) {
 		iffStream->openForm(type);
 
 		Chunk *chunk = iffStream->openChunk();
-		while (chunk != nullptr && chunk->getChunkID() != 'CRC ') // Yes the space is intentional
+		while (chunk != NULL && chunk->getChunkID() != 'CRC ') // Yes the space is intentional
 		{
 			iffStream->closeChunk();
 			chunk = iffStream->openChunk();
 		}
 
-		if (chunk != nullptr && chunk->getChunkID() == 'CRC ')
+		if (chunk != NULL && chunk->getChunkID() == 'CRC ')
 			crc = iffStream->getUnsignedInt();
 
 		iffStream->closeChunk('CRC ');

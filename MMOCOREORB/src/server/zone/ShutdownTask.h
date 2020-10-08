@@ -8,7 +8,7 @@
 #ifndef SHUTDOWNTASK_H_
 #define SHUTDOWNTASK_H_
 
-#include "server/ServerCore.h"
+#include "engine/engine.h"
 #include "server/zone/ZoneServer.h"
 #include "server/chat/ChatManager.h"
 
@@ -31,7 +31,7 @@ public:
 
 		Logger::console.info(str, true);
 
-		zoneServer->getChatManager()->broadcastGalaxy(nullptr, str);
+		zoneServer->getChatManager()->broadcastGalaxy(NULL, str);
 
 		if (minutesRemaining <= 0) {
 			ServerCore::getInstance()->signalShutdown();

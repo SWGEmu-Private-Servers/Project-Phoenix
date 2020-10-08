@@ -7,7 +7,11 @@
 #define FORCEMEDITATETASK_H_
 
 #include "engine/engine.h"
+#include "server/zone/packets/chat/ChatSystemMessage.h"
+#include "server/chat/StringIdChatParameter.h"
+#include "server/zone/objects/player/PlayerObject.h"
 #include "server/zone/objects/creature/CreatureObject.h"
+#include "templates/params/creature/CreatureAttribute.h"
 
 class ForceMeditateTask: public Task {
 	ManagedReference<CreatureObject*> player;
@@ -35,9 +39,10 @@ public:
 			if (!player->isMeditating())
 				return;
 
-
-			if (fmeditateTask != nullptr)
-				fmeditateTask->reschedule(5000);
+			player->playEffect("clienteffect/pl_force_meditate_self.cef", "");
+ 			player->playEffect("clienteffect/pl_force_absorb_hit.cef");
+			if (fmeditateTask != NULL)
+				fmeditateTask->reschedule(15000);
 
 		} catch (Exception& e) {
 			player->error("unreported exception caught in ForceMeditateTask::activate");

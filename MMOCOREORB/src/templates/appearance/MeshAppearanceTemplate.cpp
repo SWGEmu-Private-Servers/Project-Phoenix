@@ -34,7 +34,7 @@ void MeshAppearanceTemplate::createAABB() {
 		MeshData* meshData = meshes.get(k);
 
 		for (int i = 0; i < meshData->triangles.size(); ++i) {
-			MeshTriangle* tri = &meshData->triangles.getUnsafe(i);
+			MeshTriangle* tri = &meshData->triangles.get(i);
 
 			int pointA = tri->verts[0];
 			int pointB = tri->verts[1];
@@ -145,7 +145,7 @@ void MeshAppearanceTemplate::parseVertexData(IffStream* iffStream, int idx) {
 
 	Reference<MeshData*> meshData = new MeshData;
 	meshData->readObject(iffStream);
-	meshes.emplace(std::move(meshData));
+	meshes.add(meshData);
 
 	iffStream->closeForm(nextVersion);
 

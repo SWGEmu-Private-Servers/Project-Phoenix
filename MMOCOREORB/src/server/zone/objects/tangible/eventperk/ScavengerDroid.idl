@@ -4,13 +4,11 @@
 
 package server.zone.objects.tangible.eventperk;
 
+import server.zone.objects.scene.SceneObject;
 import server.zone.objects.creature.CreatureObject;
 import system.util.VectorMap;
-include system.util.Vector;
-include system.lang.Time;
-import server.zone.packets.object.ObjectMenuResponse;
+import server.zone.Zone;
 
-@json
 class ScavengerDroid extends CreatureObject {
 	@dereferenced
 	protected Time gameStartTime;
@@ -28,8 +26,7 @@ class ScavengerDroid extends CreatureObject {
 	public final static int GAMEENDED = 2;
 
 	@dereferenced
-	@rawTemplate(value = "uint64, Vector<String>")
-	protected VectorMap turnedInItemList;
+	protected VectorMap<unsigned long, Vector<string> > turnedInItemList;
 
 	@dereferenced
 	protected Vector<string> itemList;
@@ -80,7 +77,6 @@ class ScavengerDroid extends CreatureObject {
 		itemList.add(item);
 	}
 
-	@dirty
 	public boolean hasItemInItemList(string item) {
 		return itemList.contains(item);
 	}
@@ -90,14 +86,22 @@ class ScavengerDroid extends CreatureObject {
 		itemList.removeAll();
 	}
 
-	@dirty
-	public native boolean hasItemInPlayerItemList(unsigned long playerID, final string item);
+	public boolean hasItemInPlayerItemList(unsigned long playerID, final string item) {
+		if (!turnedInItemList.contains(playerID))
+			return false;
+
+		return turnedInItemList.get(playerID).contains(item);
+	}
 
 	@preLocked
 	public native void addToPlayerItemList(unsigned long playerID, final string item);
 
 	public native void announceToPlayers(final string msg);
 
-	@dirty
-	public native int getTurnedInItemListSize(unsigned long playerID);
+	public int getTurnedInItemListSize(unsigned long playerID) {
+		if (!turnedInItemList.contains(playerID))
+			return 0;
+
+		return turnedInItemList.get(playerID).size();
+	}
 }

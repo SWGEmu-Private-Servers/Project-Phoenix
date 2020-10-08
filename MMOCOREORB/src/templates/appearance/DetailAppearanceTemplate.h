@@ -8,6 +8,7 @@
 #ifndef DETAILAPPEARANCETEMPLATE_H_
 #define DETAILAPPEARANCETEMPLATE_H_
 
+#include "engine/engine.h"
 #include "templates/appearance/AppearanceTemplate.h"
 
 class DetailAppearanceTemplate : public AppearanceTemplate {
@@ -18,7 +19,7 @@ public:
 	}
 
 	DetailAppearanceTemplate() {
-		firstMesh = nullptr;
+		firstMesh = NULL;
 	}
 
 	~DetailAppearanceTemplate() {
@@ -51,7 +52,7 @@ public:
 
 	virtual Vector<Reference<MeshData* > > getTransformedMeshData(const Matrix4& parentTransform) const {
 		Vector<Reference<MeshData* > > meshes;
-		if(firstMesh != nullptr)
+		if(firstMesh != NULL)
 			meshes.addAll(firstMesh->getTransformedMeshData(parentTransform));
 		return meshes;
 	}

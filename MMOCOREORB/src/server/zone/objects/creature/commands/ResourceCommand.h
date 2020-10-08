@@ -5,7 +5,7 @@
 #ifndef RESOURCECOMMAND_H_
 #define RESOURCECOMMAND_H_
 
-#include "server/zone/managers/stringid/StringIdManager.h"
+#include "server/zone/objects/scene/SceneObject.h"
 
 class ResourceCommand : public QueueCommand {
 public:
@@ -24,6 +24,7 @@ public:
 			return INVALIDLOCOMOTION;
 
 		ResourceManager* resMan = creature->getZoneServer()->getResourceManager();
+		ManagedReference<PlayerObject*> admin = creature->getPlayerObject();
 
 		Locker locker(resMan);
 
@@ -38,22 +39,22 @@ public:
 			if(command == "list") {
 				listResources(creature, &args);
 
-			} else if(command == "health") {
+			} else if(command == "health" && admin->getAdminLevel() > 10) {
 				healthCheck(creature, &args);
 
 			} else if(command == "dump") {
 				dumpResources(creature, &args);
 
-			} else if(command == "despawn") {
+			} else if(command == "despawn" && admin->getAdminLevel() > 10) {
 				despawnResource(creature, &args);
 
 			} else if(command == "info") {
 				listResourceInfo(creature, &args);
 
-			} else if(command == "find") {
+			} else if(command == "find" && admin->getAdminLevel() > 10) {
 				findResources(creature, &args);
 
-			} else if(command == "create") {
+			} else if(command == "create" && admin->getAdminLevel() > 10) {
 				giveResource(creature, &args);
 
 			} else {
@@ -63,19 +64,19 @@ public:
 		} catch (Exception& e){
 			creature->sendSystemMessage("invalid arguments for resources command:  /resource <option> [params]");
 			creature->sendSystemMessage("		list <planet> : Lists resources on specified planet");
-			creature->sendSystemMessage("		health : Lists resource pool health stats");
-			creature->sendSystemMessage("		dump : Performs manual dump of all resources to resource_manager_spawns.lua");
-			creature->sendSystemMessage("		despawn <resource name> : Despawns a specific resource");
+			creature->sendSystemMessage("		dump : Updates the resource manager lua with recent spawns");
 			creature->sendSystemMessage("		info <resource name> : Lists Info about a specific resource");
-			creature->sendSystemMessage("		find <class> <attribute> <gt|lt> <value> [<and|or> <attribute> <gt|lt> <value> [...]]");
-			creature->sendSystemMessage("		create <name> [quantity] : Spawns resource in inventory");
+			if (admin->getAdminLevel() > 10) {
+				creature->sendSystemMessage("		find <class> <attribute> <gt|lt> <value> [<and|or> <attribute> <gt|lt> <value> [...]]");
+				creature->sendSystemMessage("		create <name> [quantity] : Spawns resource in inventory");
+			}
 		}
 
 		return SUCCESS;
 	}
 
 	void listResources(CreatureObject* creature, StringTokenizer* args) const {
-		if(creature->getZoneServer() == nullptr)
+		if(creature->getZoneServer() == NULL)
 			return;
 
 		String planet = "";
@@ -90,7 +91,7 @@ public:
 	}
 
 	void healthCheck(CreatureObject* creature, StringTokenizer* args) const {
-		if(creature->getZoneServer() == nullptr)
+		if(creature->getZoneServer() == NULL)
 			return;
 
 		ResourceManager* resMan = creature->getZoneServer()->getResourceManager();
@@ -99,7 +100,7 @@ public:
 	}
 
 	void dumpResources(CreatureObject* creature, StringTokenizer* args) const {
-		if(creature->getZoneServer() == nullptr)
+		if(creature->getZoneServer() == NULL)
 			return;
 
 		ResourceManager* resMan = creature->getZoneServer()->getResourceManager();
@@ -108,7 +109,7 @@ public:
 	}
 
 	void despawnResource(CreatureObject* creature, StringTokenizer* args) const {
-		if(creature->getZoneServer() == nullptr)
+		if(creature->getZoneServer() == NULL)
 			return;
 
 		String resourceName = "";
@@ -122,7 +123,7 @@ public:
 	}
 
 	void listResourceInfo(CreatureObject* creature, StringTokenizer* args) const {
-		if(creature->getZoneServer() == nullptr)
+		if(creature->getZoneServer() == NULL)
 			return;
 
 		String resourceName = "";
@@ -132,7 +133,7 @@ public:
 		ResourceManager* resMan = creature->getZoneServer()->getResourceManager();
 
 		ManagedReference<ResourceSpawn*> spawn = resMan->getResourceSpawn(resourceName);
-		if(spawn == nullptr) {
+		if(spawn == NULL) {
 			creature->sendSystemMessage("Resource not found");
 			return;
 		}
@@ -153,6 +154,7 @@ public:
 		int hours = ((diff / 60 / 60) % 24);
 		int minutes = ((diff / 60) % 60);
 
+
 		if(despawned > currTime) {
 			creature->sendSystemMessage("Expires in: " + String::valueOf(days) + " days, " + String::valueOf(hours) + " hours, " + String::valueOf(minutes) + " minutes");
 			creature->sendSystemMessage("Pool: " + String::valueOf(spawn->getSpawnPool()));
@@ -165,7 +167,7 @@ public:
 			creature->sendSystemMessage("Expired: " + String::valueOf(days) + " days, " + String::valueOf(hours) + " hours, " + String::valueOf(minutes) + " minutes ago");
 		}
 
-
+		creature->sendSystemMessage(spawn->getFinalClass());
 		for(int i = 0; i < 12; ++i) {
 			String attribute = "";
 			int value = spawn->getAttributeAndValue(attribute, i);
@@ -176,22 +178,22 @@ public:
 	}
 
 	void findResources(CreatureObject* creature, StringTokenizer* args) const {
-		if(creature->getZoneServer() == nullptr || !args->hasMoreTokens())
+		if(creature->getZoneServer() == NULL || !args->hasMoreTokens())
 			throw Exception();
 
 		ResourceManager* resMan = creature->getZoneServer()->getResourceManager();
-		if (resMan == nullptr)
+		if (resMan == NULL)
 			throw Exception();
 
 		String resourceType = "";
 		args->getStringToken(resourceType);
 
 		ResourceSpawner* resSpawner = resMan->getResourceSpawner();
-		if (resSpawner == nullptr)
+		if (resSpawner == NULL)
 			throw Exception();
 
 		ResourceMap* map = resSpawner->getResourceMap();
-		if (map == nullptr)
+		if (map == NULL)
 			throw Exception();
 
 		Reference<ResourceMap*> resultsMap = new ResourceMap();
@@ -310,11 +312,11 @@ public:
 	}
 
 	void giveResource(CreatureObject* creature, StringTokenizer* args) const {
-		if(creature->getZoneServer() == nullptr || !args->hasMoreTokens())
+		if(creature->getZoneServer() == NULL || !args->hasMoreTokens())
 			throw Exception();
 
 		ResourceManager* resMan = creature->getZoneServer()->getResourceManager();
-		if (resMan == nullptr)
+		if (resMan == NULL)
 			throw Exception();
 
 		if (!args->hasMoreTokens())

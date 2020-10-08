@@ -9,6 +9,7 @@
 #define CONTRABANDSCANTASK_H_
 
 #include "server/zone/managers/gcw/sessions/ContrabandScanSession.h"
+#include "engine/engine.h"
 #include "server/zone/objects/creature/CreatureObject.h"
 
 class ContrabandScanTask : public Task {
@@ -22,9 +23,9 @@ public:
 	void run() {
 		ManagedReference<CreatureObject*> player = weakPlayer.get();
 
-		if (player != nullptr) {
+		if (player != NULL) {
 			ManagedReference<ContrabandScanSession*> scanSession = player->getActiveSession(SessionFacadeType::CONTRABANDSCAN).castTo<ContrabandScanSession*>();
-			if (scanSession != nullptr) {
+			if (scanSession != NULL) {
 				scanSession->runContrabandScan();
 			}
 		}

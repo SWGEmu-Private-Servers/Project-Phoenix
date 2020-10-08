@@ -7,12 +7,21 @@
 
 #include "server/zone/objects/creature/CreatureObject.h"
 #include "server/zone/objects/creature/ai/Creature.h"
+#include "server/zone/objects/creature/ai/AiAgent.h"
 #include "server/zone/packets/object/ObjectMenuResponse.h"
+#include "server/zone/packets/chat/ChatSystemMessage.h"
+#include "server/zone/objects/creature/CreatureObject.h"
+#include "server/zone/objects/player/PlayerObject.h"
+#include "server/zone/objects/building/BuildingObject.h"
+#include "server/zone/objects/group/GroupObject.h"
 #include "server/zone/objects/creature/events/DespawnCreatureTask.h"
 #include "server/zone/managers/creature/CreatureManager.h"
 #include "server/zone/Zone.h"
+#include "server/zone/managers/combat/CombatManager.h"
+#include "server/zone/objects/tangible/threat/ThreatMap.h"
+#include "server/zone/managers/components/ComponentManager.h"
+#include "server/zone/managers/stringid/StringIdManager.h"
 #include "server/zone/objects/intangible/PetControlDevice.h"
-#include "server/zone/objects/tangible/weapon/WeaponObject.h"
 
 //#define DEBUG
 
@@ -50,25 +59,24 @@ void CreatureImplementation::fillObjectMenuResponse(ObjectMenuResponse* menuResp
 }
 
 int CreatureImplementation::handleObjectMenuSelect(CreatureObject* player, byte selectedID) {
-	auto zone = getZone();
-
-	if (zone == nullptr)
+	if (getZone() == NULL)
 		return 0;
 
 	if (!(_this.getReferenceUnsafeStaticCast()->isDead())) {
 		if (selectedID == 112) {
-			zone->getCreatureManager()->milk(_this.getReferenceUnsafeStaticCast(), player);
+			getZone()->getCreatureManager()->milk(_this.getReferenceUnsafeStaticCast(), player);
 		}
 	} else {
 		if ((selectedID == 112 || selectedID == 234 || selectedID == 235 || selectedID == 236)) {
-			zone->getCreatureManager()->harvest(_this.getReferenceUnsafeStaticCast(), player, selectedID);
+
+			getZone()->getCreatureManager()->harvest(_this.getReferenceUnsafeStaticCast(), player, selectedID);
 
 			return 0;
 		}
 	}
 
 	if (selectedID == 159) {
-		zone->getCreatureManager()->tame(_this.getReferenceUnsafeStaticCast(), player);
+		getZone()->getCreatureManager()->tame(_this.getReferenceUnsafeStaticCast(), player);
 	}
 
 	return AiAgentImplementation::handleObjectMenuSelect(player, selectedID);
@@ -134,13 +142,13 @@ void CreatureImplementation::fillAttributeList(AttributeListMessage* alm, Creatu
 		alm->insertAttribute("ferocity", (int) getFerocity());
 	}
 
-	if (creaKnowledge >= 45)
+	if (creaKnowledge >= 50)
 		alm->insertAttribute("challenge_level", getAdultLevel());
 
 	//int skillNum = skillCommands.size();
-	const CreatureAttackMap* attackMap = getAttackMap();
+	CreatureAttackMap* attackMap = getAttackMap();
 	int skillNum = 0;
-	if (attackMap != nullptr)
+	if (attackMap != NULL)
 		skillNum = attackMap->size();
 	if (creaKnowledge >= 70) {
 		String skillname = "";
@@ -185,7 +193,7 @@ void CreatureImplementation::fillAttributeList(AttributeListMessage* alm, Creatu
 }
 
 void CreatureImplementation::scheduleDespawn() {
-	if (getPendingTask("despawn") != nullptr)
+	if (getPendingTask("despawn") != NULL)
 		return;
 
 	Reference<DespawnCreatureTask*> despawn = new DespawnCreatureTask(_this.getReferenceUnsafeStaticCast());
@@ -256,7 +264,7 @@ bool CreatureImplementation::canHarvestMe(CreatureObject* player) {
 
 	SceneObject* creatureInventory = getSlottedObject("inventory");
 
-	if (creatureInventory == nullptr)
+	if (creatureInventory == NULL)
 		return false;
 
 	uint64 lootOwnerID = creatureInventory->getContainerPermissions()->getOwnerID();
@@ -288,7 +296,7 @@ bool CreatureImplementation::canDroidHarvestMe(CreatureObject* player,CreatureOb
 
 	SceneObject* creatureInventory = getSlottedObject("inventory");
 
-	if (creatureInventory == nullptr) {
+	if (creatureInventory == NULL) {
 		return false;
 	}
 
@@ -372,7 +380,7 @@ bool CreatureImplementation::hasSkillToSampleMe(CreatureObject* player) {
 	int skillMod = player->getSkillMod("dna_harvesting");
 	int cl = _this.getReferenceUnsafeStaticCast()->getLevel();
 	// Skill Mod Check, you need atleast x skill points to be able to sample x level unless creature > 13k ham or CL 75 (we only generated values to 75)
-	if (skillMod < 1 || cl > skillMod + 15)
+	if (skillMod < 1 || cl > skillMod + 75)
 		return false;
 
 	if (dnaState == CreatureManager::DNASAMPLED)
@@ -426,11 +434,11 @@ void CreatureImplementation::setPetLevel(int newLevel) {
 
 	CreatureObjectImplementation::setLevel(newLevel);
 
-	if (getCreatureTemplate() == nullptr) {
+	if (getCreatureTemplate() == NULL) {
 		return;
 	}
 
-	clearBuffs(false, false);
+	clearBuffs(false);
 
 	int baseLevel = getTemplateLevel();
 
@@ -443,14 +451,14 @@ void CreatureImplementation::setPetLevel(int newLevel) {
 	minDmg *= ratio;
 	maxDmg *= ratio;
 
-	if (readyWeapon != nullptr) {
+	if (readyWeapon != NULL) {
 		float mod = 1.f - 0.1f*float(readyWeapon->getArmorPiercing());
 
 		readyWeapon->setMinDamage(minDmg * mod);
 		readyWeapon->setMaxDamage(maxDmg * mod);
 	}
 
-	if (defaultWeapon != nullptr) {
+	if (defaultWeapon != NULL) {
 		defaultWeapon->setMinDamage(minDmg);
 		defaultWeapon->setMaxDamage(maxDmg);
 	}
@@ -479,7 +487,7 @@ bool CreatureImplementation::isMount() {
 		return false;
 
 	ManagedReference<PetControlDevice*> pcd = getControlDevice().get().castTo<PetControlDevice*>();
-	if (pcd == nullptr)
+	if (pcd == NULL)
 		return false;
 
 	if (pcd->isTrainedAsMount())
@@ -490,21 +498,14 @@ bool CreatureImplementation::isMount() {
 
 void CreatureImplementation::sendMessage(BasePacket* msg) {
 	if (!isMount()) {
-#ifdef LOCKFREE_BCLIENT_BUFFERS
-		if (!msg->getReferenceCount())
-#endif
 		delete msg;
 		return;
 	}
 
 	ManagedReference<CreatureObject* > linkedCreature = this->linkedCreature.get();
 
-	if (linkedCreature != nullptr && linkedCreature->getParent().get() == _this.getReferenceUnsafeStaticCast())
+	if (linkedCreature != NULL && linkedCreature->getParent().get() == _this.getReferenceUnsafeStaticCast())
 		linkedCreature->sendMessage(msg);
-	else {
-#ifdef LOCKFREE_BCLIENT_BUFFERS
-		if (!msg->getReferenceCount())
-#endif
+	else
 		delete msg;
-	}
 }

@@ -5,13 +5,15 @@
 #include "SharedLabratory.h"
 #include "server/zone/managers/crafting/CraftingManager.h"
 #include "server/zone/objects/tangible/misc/CustomIngredient.h"
-#include "server/zone/objects/manufactureschematic/ingredientslots/ComponentSlot.h"
-#include "server/zone/objects/manufactureschematic/ingredientslots/ResourceSlot.h"
 
 SharedLabratory::SharedLabratory() : Logger("SharedLabratory"){
 }
 
 SharedLabratory::~SharedLabratory() {
+}
+
+bool SharedLabratory::allowFactoryRun(ManufactureSchematic* manufactureSchematic) {
+	return manufactureSchematic->allowFactoryRun();
 }
 
 void SharedLabratory::initialize(ZoneServer* server) {
@@ -23,31 +25,31 @@ float SharedLabratory::calculateExperimentationValueModifier(int experimentation
 	float results;
 	switch (experimentationResult) {
 	case CraftingManager::AMAZINGSUCCESS:
-		results = 0.08f;
+		results = 0.09f;
 		break;
 	case CraftingManager::GREATSUCCESS:
-		results = 0.07f;
+		results = 0.08f;
 		break;
 	case CraftingManager::GOODSUCCESS:
-		results = 0.055f;
+		results = 0.07f;
 		break;
 	case CraftingManager::MODERATESUCCESS:
-		results = 0.015f;
+		results = 0.05f;
 		break;
 	case CraftingManager::SUCCESS:
-		results = 0.01f;
+		results = 0.04f;
 		break;
 	case CraftingManager::MARGINALSUCCESS:
-		results = 0.00f;
+		results = 0.02f;
 		break;
 	case CraftingManager::OK:
-		results = -0.04f;
+		results = -0.01f;
 		break;
 	case CraftingManager::BARELYSUCCESSFUL:
-		results = -0.07f;
+		results = -0.02f;
 		break;
 	case CraftingManager::CRITICALFAILURE:
-		results = -0.08f;
+		results = -0.05f;
 		break;
 	default:
 		results = 0;
@@ -59,7 +61,7 @@ float SharedLabratory::calculateExperimentationValueModifier(int experimentation
 float SharedLabratory::calculateAssemblyValueModifier(int assemblyResult) {
 
 	if(assemblyResult == CraftingManager::AMAZINGSUCCESS)
-		return 1.05f;
+		return 1.20f;
 	float result = 1.1f - (assemblyResult * .1f);
 	return result;
 }
@@ -84,17 +86,17 @@ float SharedLabratory::getWeightedValue(ManufactureSchematic* manufactureSchemat
 		if (ingredientslot->isComponentSlot()) {
 			ComponentSlot* compSlot = cast<ComponentSlot*>(ingredientslot.get());
 
-			if (compSlot == nullptr)
+			if (compSlot == NULL)
 				continue;
 
 			ManagedReference<TangibleObject*> tano = compSlot->getPrototype();
 
-			if (tano == nullptr || !tano->isCustomIngredient())
+			if (tano == NULL || !tano->isCustomIngredient())
 				continue;
 
 			ManagedReference<CustomIngredient*> component = cast<CustomIngredient*>( tano.get());
 
-			if (component == nullptr)
+			if (component == NULL)
 				continue;
 
 			n = draftslot->getQuantity();
@@ -114,12 +116,12 @@ float SharedLabratory::getWeightedValue(ManufactureSchematic* manufactureSchemat
 
 		ResourceSlot* resSlot = cast<ResourceSlot*>(ingredientslot.get());
 
-		if(resSlot == nullptr)
+		if(resSlot == NULL)
 			continue;
 
 		ManagedReference<ResourceSpawn* > spawn = resSlot->getCurrentSpawn();
 
-		if (spawn == nullptr) {
+		if (spawn == NULL) {
 			error("Spawn object is null when running getWeightedValue");
 			return 0.0f;
 		}
@@ -164,7 +166,7 @@ int SharedLabratory::calculateAssemblySuccess(CreatureObject* player,DraftSchema
 	if (player->hasBuff(BuffCRC::FOOD_CRAFT_BONUS)) {
 		Buff* buff = player->getBuff(BuffCRC::FOOD_CRAFT_BONUS);
 
-		if (buff != nullptr) {
+		if (buff != NULL) {
 			craftbonus = buff->getSkillModifierValue("craft_bonus");
 			toolModifier *= 1.0f + (craftbonus / 100.0f);
 		}

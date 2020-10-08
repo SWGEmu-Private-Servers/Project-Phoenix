@@ -5,6 +5,8 @@
 #ifndef CREATUREFLAG_H_
 #define CREATUREFLAG_H_
 
+#include "engine/engine.h"
+
 class CreatureFlag {
 public:
 	enum {
@@ -32,11 +34,11 @@ public:
 		WANDER                  = 0x800,
 		NOAIAGGRO               = 0x1000,
 		SCANNING_FOR_CONTRABAND = 0x2000,
-		IGNORE_FACTION_STANDING	= 0x4000,
 
 		CARNIVORE               = 0x01,
 		HERBIVORE               = 0x02
 	};
 };
+
 
 #endif /* CREATUREFLAG_H_ */

@@ -30,7 +30,9 @@ public:
 			return;
 		}
 
-		if (player->getFutureFactionStatus() != -1)
+		uint32 pvpStatusBitmask = player->getPvpStatusBitmask();
+
+		if (player->getFutureFactionStatus() != FactionStatus::ONLEAVE)
 			return;
 
 		int curStatus = player->getFactionStatus();
@@ -50,7 +52,7 @@ public:
 			ManagedReference<CreatureObject*> creo = player->asCreatureObject();
 
 			Core::getTaskManager()->scheduleTask([creo]{
-				if(creo != nullptr) {
+				if(creo != NULL) {
 					Locker locker(creo);
 
 					creo->setFactionStatus(FactionStatus::COVERT);
@@ -63,7 +65,7 @@ public:
 			ManagedReference<CreatureObject*> creo = player->asCreatureObject();
 
 			Core::getTaskManager()->scheduleTask([creo]{
-				if(creo != nullptr) {
+				if(creo != NULL) {
 					Locker locker(creo);
 
 					creo->setFactionStatus(FactionStatus::OVERT);

@@ -11,20 +11,22 @@
 #ifndef RESOURCESHIFTTASK_H_
 #define RESOURCESHIFTTASK_H_
 
+#include "engine/engine.h"
+
+class ResourceSpawner;
+
 class ResourceShiftTask : public Task {
 	ManagedReference<ResourceManager* > resourceManager;
 
 public:
 	ResourceShiftTask(ManagedReference<ResourceManager* >  resMan) {
 		resourceManager = resMan;
-
-		setCustomTaskQueue("slowQueue");
 	}
 
 	void run() {
 		ZoneServer* server = resourceManager->getZoneServer();
 
-		if (server == nullptr || server->isServerShuttingDown())
+		if (server == NULL || server->isServerShuttingDown())
 			return;
 
 		resourceManager->shiftResources();

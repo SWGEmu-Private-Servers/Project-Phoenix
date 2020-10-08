@@ -4,6 +4,14 @@
  *  Created on: 16/01/2010
  *      Author: victor
  */
+ 
+ /*
+ * PLEASE DO NOT STEAL OUR WORK
+ * ASK BEFOR USING
+ * Contact Me Here http://projectphoenix.com.shivtr.com/
+ * Modified on: 9/21/2016
+ * Authors: Kurdtkobain
+ */
 
 #ifndef COMMANDSNEW_H_
 #define COMMANDSNEW_H_
@@ -300,7 +308,7 @@
 #include "HarvesterHarvestCommand.h"
 #include "HarvesterMakeCrateCommand.h"
 #include "HarvesterSelectResourceCommand.h"
-#include "HarvesterTakeSurveyCommand.h"
+#include "HarvesterTakeSurvey Command.h"
 #include "HasVeteranRewardCommand.h"
 #include "HaveconsentCommand.h"
 #include "HeadShot1Command.h"
@@ -837,6 +845,7 @@
 #include "InspacereloadCommand.h"
 #include "InspacerrCommand.h"
 #include "RequestSpaceTrainerCommand.h"
+#include "setPvp.h"
 
 
 

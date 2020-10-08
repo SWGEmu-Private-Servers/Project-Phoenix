@@ -7,13 +7,15 @@
 #include "server/zone/objects/creature/CreatureObject.h"
 #include "templates/params/ObserverEventType.h"
 #include "server/zone/objects/player/sessions/EntertainingSession.h"
+#include "server/zone/objects/player/PlayerObject.h"
 #include "server/zone/objects/tangible/Instrument.h"
+#include "server/zone/objects/tangible/components/droid/DroidPlaybackModuleDataComponent.h"
 #include "server/zone/objects/creature/events/DroidPlaybackEvent.h"
 
 int DroidPlaybackObserverImplementation::notifyObserverEvent(unsigned int eventType, Observable* observable, ManagedObject* arg1, int64 arg2) {
 	// check params we should have the player around here
 	SceneObject* sceno = dynamic_cast<SceneObject*>(arg1);
-	if (sceno == nullptr) {
+	if (sceno == NULL) {
 		return 1;
 	}
 
@@ -22,7 +24,7 @@ int DroidPlaybackObserverImplementation::notifyObserverEvent(unsigned int eventT
 	}
 
 	CreatureObject* player = dynamic_cast<CreatureObject*>(sceno);
-	if (player == nullptr) {
+	if (player == NULL) {
 		return 1;
 	}
 
@@ -30,7 +32,7 @@ int DroidPlaybackObserverImplementation::notifyObserverEvent(unsigned int eventT
 
 	if (eventType == ObserverEventType::STARTENTERTAIN) {
 		ManagedReference<EntertainingSession*> playingSession = player->getActiveSession(SessionFacadeType::ENTERTAINING).castTo<EntertainingSession*>();
-		if(playingSession == nullptr) {
+		if(playingSession == NULL) {
 			return 1;
 		}
 

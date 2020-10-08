@@ -8,39 +8,43 @@
 
 package server.zone.objects.region;
 
+import server.zone.objects.creature.CreatureObject;
+import server.zone.objects.region.Region;
 import server.zone.objects.scene.SceneObject;
 import server.zone.objects.tangible.TangibleObject;
+import server.zone.objects.structure.StructureObject;
 import server.zone.Zone;
-import system.thread.Mutex;
-import engine.util.u3d.AABB;
-import server.zone.objects.pathfinding.NavArea;
-
+import server.zone.managers.city.CityManager;
+include server.zone.managers.planet.PlanetTravelPoint;
+include server.chat.StringIdChatParameter;
 include server.zone.ZoneReference;
-include server.zone.objects.region.Region;
 include server.zone.objects.scene.variables.StringId;
 include system.lang.Time;
 include server.zone.objects.region.CitizenList;
 include server.zone.objects.region.events.CityUpdateEvent;
 include server.zone.objects.region.events.CitizenAssessmentEvent;
+include server.zone.objects.region.CityStructureInventory;
 include system.thread.atomic.AtomicInteger;
 include pathfinding.RecastNavMesh;
-include server.zone.objects.structure.StructureObject;
-include engine.core.ManagedObject;
-include system.util.Vector;
-include system.util.SortedVector;
-include system.util.VectorMap;
-include engine.log.Logger;
-include server.zone.objects.creature.CreatureObject;
+import system.thread.Mutex;
+import engine.util.u3d.AABB;
+import system.thread.Mutex;
+include system.util.SynchronizedVector;
+import server.zone.objects.pathfinding.NavMeshRegion;
 
-@json
+@lua
 class CityRegion extends ManagedObject implements Logger {
+
 	@weakReference
-	protected NavArea navMesh;
+	protected transient NavMeshRegion navmeshRegion;
 
 	protected byte cityRank;
 
 	@dereferenced
 	protected StringId regionName;
+
+	@dereferenced
+	protected string navMeshName;
 
 	@dereferenced
 	protected VectorMap<unsigned long, int> candidates;
@@ -217,7 +221,7 @@ class CityRegion extends ManagedObject implements Logger {
 	@dirty
 	public native boolean hasZoningRights(unsigned long objectid);
 
-	@read
+	@dirty
 	public boolean containsPoint(float x, float y) {
 		for (int i = 0; i < regions.size(); ++i) {
 			Region aa = regions.get(i);
@@ -246,6 +250,17 @@ class CityRegion extends ManagedObject implements Logger {
 	@dirty
 	public boolean hasAssessmentPending() {
 		return assessmentPending;
+	}
+
+	@local
+	@dirty
+	public RecastNavMesh getNavMesh() {
+		NavMeshRegion navRegion = navmeshRegion;
+
+		if (navRegion == null)
+			return null;
+
+		return navRegion.getNavMesh();
 	}
 
 	@preLocked
@@ -328,6 +343,13 @@ class CityRegion extends ManagedObject implements Logger {
 	}
 
 	@dirty
+	public native string getNavMeshName();
+
+	public void setNavMeshName(string name) {
+		navMeshName = name;
+	}
+
+	@dirty
 	public native string getRegionName();
 
 	@dirty
@@ -342,7 +364,7 @@ class CityRegion extends ManagedObject implements Logger {
 	public float getPositionX() {
 		Region aa = regions.get(0);
 
-		if (!aa)
+		if (aa == null)
 			return 0.0;
 
 		return aa.getPositionX();
@@ -352,7 +374,7 @@ class CityRegion extends ManagedObject implements Logger {
 	public float getPositionY() {
 		Region aa = regions.get(0);
 
-		if (!aa)
+		if (aa == null)
 			return 0.0;
 
 		return aa.getPositionY();
@@ -368,7 +390,7 @@ class CityRegion extends ManagedObject implements Logger {
 
 		Region aa = regions.get(0);
 
-		if (!aa)
+		if (aa == null)
 			return 0.0;
 
 		return aa.getRadius();
@@ -410,14 +432,14 @@ class CityRegion extends ManagedObject implements Logger {
 		return cityTreasury;
 	}
 
-	@preLocked
-	public native void createNavMesh(final string queue, boolean forceRebuild);
+    @preLocked
+	public native void createNavRegion(final string queue, boolean forceRebuild);
+
+    @preLocked
+	public native void createNavRegion();
 
 	@preLocked
-	public native void createNavMesh();
-
-	@preLocked
-	public native void destroyNavMesh();
+	public native void destroyNavRegion();
 
 	@dirty
 	public boolean isMayor(unsigned long objectid) {
@@ -854,6 +876,6 @@ class CityRegion extends ManagedObject implements Logger {
 	@preLocked
 	public native void cleanupMissionTerminals(int limit);
 
-	@read
+	@dirty
 	public native unsigned long getObjectID();
 }

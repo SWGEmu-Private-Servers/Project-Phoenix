@@ -5,6 +5,7 @@
 #ifndef VOLLEYFIRECOMMAND_H_
 #define VOLLEYFIRECOMMAND_H_
 
+#include "server/zone/objects/scene/SceneObject.h"
 #include "SquadLeaderCommand.h"
 #include "server/zone/managers/skill/SkillModManager.h"
 
@@ -51,14 +52,14 @@ public:
 	}
 
 	bool attemptVolleyFire(CreatureObject* player, uint64* target, int skillMod) const {
-		if (player == nullptr)
+		if (player == NULL)
 			return false;
 
 		ManagedReference<WeaponObject*> weapon = player->getWeapon();
 
 		String skillCRC;
 
-		if (weapon != nullptr) {
+		if (weapon != NULL) {
 			if (!weapon->getCreatureAccuracyModifiers()->isEmpty()) {
 				skillCRC = weapon->getCreatureAccuracyModifiers()->get(0);
 
@@ -75,7 +76,7 @@ public:
 	}
 
 	bool doVolleyFire(CreatureObject* leader, GroupObject* group, uint64* target) const {
-		if (leader == nullptr || group == nullptr)
+		if (leader == NULL || group == NULL)
 			return false;
 
 		for (int i = 0; i < group->getGroupSize(); i++) {

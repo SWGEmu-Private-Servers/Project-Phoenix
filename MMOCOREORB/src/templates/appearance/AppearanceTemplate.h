@@ -8,14 +8,17 @@
 #ifndef APPEARANCETEMPLATE_H_
 #define APPEARANCETEMPLATE_H_
 
+#include "engine/engine.h"
+#include "templates/IffTemplate.h"
+#include "templates/collision/BoundingVolumes.h"
 #include "templates/collision/BoundingVolumeFactory.h"
 #include "templates/appearance/MeshData.h"
 
 class AppearanceTemplate : public Object {
 	String floorName;
 	String fileName;
-	BaseBoundingVolume* volume = nullptr;
-	BaseBoundingVolume* collisionVolume = nullptr;
+	BaseBoundingVolume* volume;
+	BaseBoundingVolume* collisionVolume;
 public:
 
 	virtual uint32 getType() const {

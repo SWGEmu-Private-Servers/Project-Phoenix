@@ -13,29 +13,32 @@
 
 class dtNavMesh;
 
-class RecastNavMesh : public Object, public Logger {
-	void loadAll(ObjectInputStream* stream);
-	void saveAll(ObjectOutputStream* stream);
-
+class RecastNavMesh : public Object, Logger {
+	void loadAll(const String& filename);
 	dtNavMesh *navMesh;
+	//Vector3 position;
 	NavMeshSetHeader header;
-	String name;
+	String filename;
+	ReadWriteLock rwLock;
 
 public:
-	RecastNavMesh() : Logger("RecastNavMesh"), header() {
-		navMesh = nullptr;
+	RecastNavMesh(const String& filename, bool forceRebuild=false);
+	RecastNavMesh() : header() {
+		navMesh = NULL;
 	}
 
 	~RecastNavMesh() {
 		dtFreeNavMesh(navMesh);
 	}
 
-	bool toBinaryStream(ObjectOutputStream* stream);
+	void reloadNavmesh() {
+		loadAll(filename);
+	}
 
-	bool parseFromBinaryStream(ObjectInputStream* stream);
+	void deleteFile();
 
-	bool isLoaded() const {
-		return navMesh != nullptr;
+	bool isLoaded() {
+		return navMesh != NULL;
 	}
 
 	const NavMeshSetHeader& getMeshHeader() {
@@ -46,23 +49,18 @@ public:
 		return navMesh;
 	}
 
-	void setDetourNavMeshHeader(const NavMeshSetHeader& header) {
-		this->header = header;
-	}
+    void setDetourNavMeshHeader(const NavMeshSetHeader& header) {
+        this->header = header;
+    }
 
 	void setDetourNavMesh(dtNavMesh* navMesh) {
 		this->navMesh = navMesh;
 	}
 
-	void setName(const String& name) {
-		this->name = name;
-		Logger::setLoggingName("RecastNavMesh " + name);
+	void setFileName(const String& name) {
+		filename = name;
 	}
 
-	void setupDetourNavMeshHeader();
-
-	void copyMeshTo(dtNavMesh* mesh);
-
-	void saveToFile();
+	ReadWriteLock* getLock() { return &rwLock; }
 };
 #endif /* RECASTNAVMESH_H_ */

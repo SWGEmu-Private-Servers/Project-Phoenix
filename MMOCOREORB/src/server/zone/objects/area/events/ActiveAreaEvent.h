@@ -15,7 +15,6 @@
  */
 
 #include "server/zone/objects/area/ActiveArea.h"
-#include "server/zone/Zone.h"
 
 namespace server {
  namespace zone {
@@ -41,7 +40,30 @@ namespace server {
 		   sceneObject = obj;
 	   }
 
-	   void run();
+	   void run() {
+		   ManagedReference<ActiveArea*> area = activeArea.get();
+		   ManagedReference<SceneObject*> object = sceneObject.get();
+
+		   if (area == NULL || object == NULL)
+			   return;
+
+		   Locker clocker(object);
+
+		   Locker locker(area, object);
+
+		   switch (eventType) {
+		   case ENTEREVENT:
+			   area->notifyEnter(object);
+			   break;
+
+		   case EXITEVENT:
+			   area->notifyExit(object);
+			   break;
+
+		   default:
+			   break;
+		   }
+	   }
 
    };
     }

@@ -18,12 +18,10 @@
 #include "server/zone/objects/structure/StructureObject.h"
 #include "server/zone/objects/intangible/tasks/StorePetTask.h"
 #include "server/zone/managers/planet/PlanetManager.h"
-#include "server/zone/objects/creature/ai/DroidObject.h"
-#include "server/zone/objects/transaction/TransactionLog.h"
 
 void DroidMaintenanceSessionImplementation::initialize() {
 	ManagedReference<CreatureObject*> creature = this->player.get();
-	Reference<DroidMaintenanceModuleDataComponent*> module = this->maintModule.get();
+	ManagedReference<DroidMaintenanceModuleDataComponent*> module = this->maintModule.get();
 	// get the total credits this guy has right now!
 	availableCredits = creature->getCashCredits() + creature->getBankCredits();
 	module->getStructureList(&structures, creature->getZoneServer(),creature->getZone()->getZoneCRC());
@@ -34,7 +32,7 @@ void DroidMaintenanceSessionImplementation::initialize() {
 
 void DroidMaintenanceSessionImplementation::sendMaintanceRunBox(){
 	// main ui
-	selectedStructure = nullptr;
+	selectedStructure = NULL;
 
 	ManagedReference<CreatureObject*> creature = this->player.get();
 
@@ -44,10 +42,7 @@ void DroidMaintenanceSessionImplementation::sendMaintanceRunBox(){
 		return;
 	}
 
-	Reference<DroidMaintenanceModuleDataComponent*> module = this->maintModule.get();
-
-	if (module == nullptr)
-		return;
+	ManagedReference<DroidMaintenanceModuleDataComponent*> module = this->maintModule.get();
 
 	ManagedReference<SuiListBox*> box = new SuiListBox(creature, SuiWindowType::DROID_MAINTENANCE_RUN_LIST, SuiListBox::HANDLETHREEBUTTON);
 	box->setCallback(new DroidMaintenanceSessionRunMenuSuiCallback(creature->getZoneServer()));
@@ -66,7 +61,7 @@ void DroidMaintenanceSessionImplementation::sendMaintanceRunBox(){
 		ManagedReference<StructureObject*> obj = structures.elementAt(i);
 		StringBuffer buff;
 		String zoneName = "the void";
-		if (obj->getZone() != nullptr) {
+		if (obj->getZone() != NULL) {
 			zoneName = obj->getZone()->getZoneName();
 		}
 		// assume 30 chars per section, 3 sections so 90 chars.
@@ -106,24 +101,18 @@ void DroidMaintenanceSessionImplementation::sendMaintanceRunBox(){
 
 void DroidMaintenanceSessionImplementation::sendMaintenanceTransferBox(){
 	// add result
-	if (selectedStructure == nullptr) {
+	if (selectedStructure == NULL) {
 		cancelSession();
 		return;
 	}
 	ManagedReference<CreatureObject*> creature = this->player.get();
 
-	if (creature == nullptr) {
+	if (creature == NULL) {
 		cancelSession();
 		return;
 	}
 
-	Reference<DroidMaintenanceModuleDataComponent*> module = this->maintModule.get();
-
-	if (module == nullptr) {
-		cancelSession();
-		return;
-	}
-
+	ManagedReference<DroidMaintenanceModuleDataComponent*> module = this->maintModule.get();
 	// create transfer box
 	ManagedReference<SuiTransferBox*> sui = new SuiTransferBox(creature,SuiWindowType::DROID_ADD_STRUCTURE_AMOUNT);
 	sui->setCallback(new DroidMaintenanceSessionAddCreditsSuiCallback(creature->getZoneServer()));
@@ -144,7 +133,7 @@ void DroidMaintenanceSessionImplementation::sendMaintenanceTransferBox(){
 	selectedFees = 0;
 	if (offplanet) {
 		PlanetManager* planetManager = zoneCreature->getPlanetManager();
-		if (planetManager == nullptr) {
+		if (planetManager == NULL) {
 			cancelSession();
 			return;
 		}
@@ -161,7 +150,7 @@ void DroidMaintenanceSessionImplementation::sendMaintenanceTransferBox(){
 }
 void DroidMaintenanceSessionImplementation::addCreditsToCurrentStructure(int amount) {
 	// WE know the current structure add it to our pay list.
-	if (selectedStructure == nullptr) {
+	if (selectedStructure == NULL) {
 		cancelSession();
 		return;
 	}
@@ -174,10 +163,6 @@ void DroidMaintenanceSessionImplementation::performMaintenanceRun(){
     // launch the task and set droid cooldown.
 	ManagedReference<CreatureObject*> creature = this->player.get();
 
-	if (creature == nullptr) {
-		return;
-	}
-
 	if (maintenance.size() == 0) {
 		creature->sendSystemMessage("@pet/droid_modules:droid_maint_empty_maint_run");
 		sendMaintanceRunBox();
@@ -185,24 +170,14 @@ void DroidMaintenanceSessionImplementation::performMaintenanceRun(){
 	}
 
 	Reference<DroidMaintenanceModuleDataComponent*> module = this->maintModule.get();
-
-	if (module == nullptr) {
-		cancelSession();
-		return;
-	}
-
 	ManagedReference<DroidObject*> droid = module->getDroidObject();
-
-	if (droid == nullptr) {
-		return;
-	}
 
 	Locker locker(creature);
 	Locker droidLock(droid, creature);
 
 	Zone* zone = droid->getZone();
 
-	if (zone == nullptr)
+	if (zone == NULL)
 		return;
 
 	// pay all structures
@@ -235,13 +210,10 @@ void DroidMaintenanceSessionImplementation::performMaintenanceRun(){
 	// that seems ok he wont be able to touch the droid for a long time anyways so lets roleplay out it just runs out in low power situation.
 	// we had enough to run.
 	if (creature->getCashCredits() >= totalFees) {
-		TransactionLog log(creature, droid, TrxCode::STRUCTUREMAINTANENCE, totalFees, true);
 		creature->subtractCashCredits(totalFees);
 	} else {
 		int payedSoFar = creature->getCashCredits();
-		TransactionLog logCash(creature, droid, TrxCode::STRUCTUREMAINTANENCE, payedSoFar, true);
 		creature->subtractCashCredits(payedSoFar);
-		TransactionLog logBank(creature, droid, TrxCode::STRUCTUREMAINTANENCE, totalFees - payedSoFar, true);
 		creature->subtractBankCredits(totalFees - payedSoFar);
 	}
 	// now the structures.
@@ -279,7 +251,7 @@ int DroidMaintenanceSessionImplementation::cancelSession() {
 	if (strongPlayeRef != nullptr)
 		strongPlayeRef->dropActiveSession(SessionFacadeType::DROIDMAINTENANCERUN);
 
-	selectedStructure = nullptr;
+	selectedStructure = NULL;
 	structures.removeAll();
 	maintenance.removeAll();
 	return 0;

@@ -9,15 +9,22 @@
  */
 
 #include "SchematicMap.h"
+#include "templates/crafting/draftslot/DraftSlot.h"
+#include "templates/crafting/resourceweight/ResourceWeight.h"
+#include "engine/engine.h"
 
-SchematicMap::SchematicMap() : objectManager(nullptr) {
+//VectorMap<uint32, ManagedReference<DraftSchematic* > > SchematicMap::schematicIdMap;
+//VectorMap<String, DraftSchematicGroup* > SchematicMap::groupMap;
+//ZoneServer* SchematicMap::zoneServer = NULL;
+
+SchematicMap::SchematicMap() : objectManager(NULL) {
 	setLoggingName("SchematicMap");
 	info("Loading schematics...");
 
 	Lua::init();
 
 	iffGroupMap.setAllowDuplicateInsertPlan();
-	groupMap.setNullValue(nullptr);
+	groupMap.setNullValue(NULL);
 }
 
 SchematicMap::~SchematicMap() {
@@ -43,7 +50,7 @@ void SchematicMap::loadSchematicGroups() {
 	IffStream* iffStream = templateManager->openIffFile(
 			"datatables/crafting/schematic_group.iff");
 
-	if (iffStream == nullptr) {
+	if (iffStream == NULL) {
 		info("schematic_group.iff could not be found.", true);
 		return;
 	}
@@ -81,7 +88,7 @@ void SchematicMap::loadDraftSchematicDatabase() {
 
 		ManagedReference<DraftSchematic* > draftSchematic = zoneServer->getObject(objectID).castTo<DraftSchematic*>();
 
-		if(draftSchematic != nullptr) {
+		if(draftSchematic != NULL) {
 
 			if(!schematicCrcMap.contains(draftSchematic->getClientObjectCRC()))
 				schematicCrcMap.put(draftSchematic->getClientObjectCRC(), draftSchematic);
@@ -121,11 +128,11 @@ void SchematicMap::loadDraftSchematicFile() {
 
 		luaObject.pop();
 
-		if (schematic == nullptr) {
+		if (schematic == NULL) {
 			try {
 				schematic = dynamic_cast<DraftSchematic*> (objectManager->createObject(servercrc, 1, "draftschematics"));
 
-				if(schematic == nullptr) {
+				if(schematic == NULL) {
 					error("Could not create schematic with crc: " + String::valueOf(servercrc));
 					continue;
 				}
@@ -159,14 +166,14 @@ void SchematicMap::buildSchematicGroups() {
 
 		DraftSchematic* schematic = schematicCrcMap.get(entry.getKey());
 
-		if(schematic != nullptr) {
+		if(schematic != NULL) {
 			Locker locker(schematic);
 
 			schematic->setGroupName(groupName);
 
 			DraftSchematicGroup* group = groupMap.get(groupName);
 
-			if (group == nullptr) {
+			if (group == NULL) {
 				group = new DraftSchematicGroup();
 				groupMap.put(groupName, group);
 			}
@@ -223,7 +230,7 @@ void SchematicMap::removeSchematics(PlayerObject* playerObject,
 void SchematicMap::sendDraftSlotsTo(CreatureObject* player, uint32 schematicID) {
 	ManagedReference<DraftSchematic*> schematic = schematicCrcMap.get(schematicID);
 
-	if (schematic == nullptr)
+	if (schematic == NULL)
 		return;
 
 	/// The client doesn't display correctly all the time
@@ -235,7 +242,7 @@ void SchematicMap::sendDraftSlotsTo(CreatureObject* player, uint32 schematicID) 
 void SchematicMap::sendResourceWeightsTo(CreatureObject* player, uint32 schematicID) {
 	ManagedReference<DraftSchematic*> schematic = schematicCrcMap.get(schematicID);
 
-	if (schematic == nullptr)
+	if (schematic == NULL)
 		return;
 
 	schematic->sendResourceWeightsTo(player);

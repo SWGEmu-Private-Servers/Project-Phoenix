@@ -1,4 +1,5 @@
 #include "ScavengerDroidContainerComponent.h"
+#include "server/zone/objects/tangible/Container.h"
 #include "server/zone/objects/tangible/eventperk/ScavengerDroid.h"
 #include "server/zone/objects/creature/CreatureObject.h"
 #include "server/zone/objects/tangible/components/EventPerkDataComponent.h"
@@ -6,32 +7,32 @@
 int ScavengerDroidContainerComponent::canAddObject(SceneObject* sceneObject, SceneObject* object, int containmentType, String& errorDescription) const {
 	ManagedReference<CreatureObject*> creature = cast<CreatureObject*>(sceneObject);
 
-	if (creature == nullptr)
+	if (creature == NULL)
 		return TransferErrorCode::INVALIDTYPE;
 
 	ManagedReference<ScavengerDroid*> droid = cast<ScavengerDroid*>(creature.get());
 
-	if (droid == nullptr)
+	if (droid == NULL)
 		return TransferErrorCode::INVALIDTYPE;
 
-	ManagedReference<CreatureObject*> player = object->getParentRecursively(SceneObjectType::PLAYERCREATURE).castTo<CreatureObject*>();
+	ManagedReference<CreatureObject*> player = cast<CreatureObject*>(object->getParentRecursively(SceneObjectType::PLAYERCREATURE).get().get());
 
-	if (player == nullptr)
+	if (player == NULL)
 		return TransferErrorCode::INVALIDTYPE;
 
 	EventPerkDataComponent* gameData = cast<EventPerkDataComponent*>(droid->getDataObjectComponent()->get());
 
-	if (gameData == nullptr)
+	if (gameData == NULL)
 		return TransferErrorCode::INVALIDTYPE;
 
 	EventPerkDeed* deed = gameData->getDeed();
 
-	if (deed == nullptr)
+	if (deed == NULL)
 		return TransferErrorCode::INVALIDTYPE;
 
 	ManagedReference<CreatureObject*> owner = deed->getOwner().get();
 
-	if (owner == nullptr)
+	if (owner == NULL)
 		return TransferErrorCode::INVALIDTYPE;
 
 	int gameStatus = droid->getGameStatus();
@@ -62,19 +63,19 @@ int ScavengerDroidContainerComponent::canAddObject(SceneObject* sceneObject, Sce
 }
 
 bool ScavengerDroidContainerComponent::transferObject(SceneObject* sceneObject, SceneObject* object, int containmentType, bool notifyClient, bool allowOverflow, bool notifyRoot) const {
-	ManagedReference<CreatureObject*> player = object->getParentRecursively(SceneObjectType::PLAYERCREATURE).castTo<CreatureObject*>();
+	CreatureObject* player = object->getParentRecursively(SceneObjectType::PLAYERCREATURE).get().castTo<CreatureObject*>();
 
-	if (player == nullptr)
+	if (player == NULL)
 		return false;
 
 	ManagedReference<CreatureObject*> creature = cast<CreatureObject*>(sceneObject);
 
-	if (creature == nullptr)
+	if (creature == NULL)
 		return false;
 
 	ManagedReference<ScavengerDroid*> droid = cast<ScavengerDroid*>(creature.get());
 
-	if (droid == nullptr)
+	if (droid == NULL)
 		return false;
 
 	String itemTemplate = object->getObjectTemplate()->getFullTemplateString();

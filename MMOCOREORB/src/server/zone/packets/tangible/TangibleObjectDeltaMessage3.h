@@ -5,7 +5,7 @@
 #ifndef TANGIBLEOBJECTDELTAMESSAGE3_H_
 #define TANGIBLEOBJECTDELTAMESSAGE3_H_
 
-#include "server/zone/packets/DeltaMessage.h"
+#include "../../packets/DeltaMessage.h"
 
 #include "server/zone/objects/tangible/TangibleObject.h"
 
@@ -30,7 +30,8 @@ public:
 		addFloatUpdate(0, tano->getComplexity());
 	}
 
-	void updateObjectName(const StringId& name) {
+	void updateObjectName(StringId& name) {
+
 		addStringIdUpdate(1, name);
 	}
 
@@ -39,7 +40,7 @@ public:
 			CreatureObject* player = cast<CreatureObject*>( tano.get());
 
 			if (player->getPlayerObject()->hasGodMode() && tag != "") {
-				UnicodeString customName = name + " \\#ffff00[" + tag + "]\\#.";
+				UnicodeString customName = name + " \\#00ace6[" + tag + "]\\#.";
 				addUnicodeUpdate(2, customName);
 				return;
 			}

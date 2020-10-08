@@ -5,6 +5,8 @@
 #ifndef EMPTYMAILTARGETCOMMAND_H_
 #define EMPTYMAILTARGETCOMMAND_H_
 
+#include "server/zone/objects/scene/SceneObject.h"
+
 class EmptyMailTargetCommand : public QueueCommand {
 public:
 
@@ -30,14 +32,14 @@ public:
 			targetCreature = server->getZoneServer()->getPlayerManager()->getPlayer(firstName);
 		}
 
-		if (targetCreature == nullptr || !targetCreature->isPlayerCreature()) {
+		if (targetCreature == NULL || !targetCreature->isPlayerCreature()) {
 			creature->sendSystemMessage("@player/player_utility:invalid_target"); // "Target for this command is invalid."
 			return INVALIDTARGET;
 		}
 
 		PlayerObject* ghost = targetCreature->getPlayerObject();
 
-		if (ghost == nullptr)
+		if (ghost == NULL)
 			return GENERALERROR;
 
 		uint64 selfID = creature->getObjectID();

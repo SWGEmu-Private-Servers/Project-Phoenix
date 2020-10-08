@@ -6,10 +6,12 @@
 #ifndef SKILLMANAGER_H_
 #define SKILLMANAGER_H_
 
+#include "engine/engine.h"
 #include "server/zone/objects/player/variables/Ability.h"
-#include "server/zone/objects/creature/variables/Skill.h"
 
+class Skill;
 class PerformanceManager;
+class ImageDesignManager;
 
 namespace server {
 namespace zone {
@@ -68,14 +70,14 @@ public:
 	void addAbility(PlayerObject* ghost, const String& abilityName, bool notifyClient = true);
 	void removeAbility(PlayerObject* ghost, const String& abilityName, bool notifyClient = true);
 
-	void addAbilities(PlayerObject* ghost, const Vector<String>& abilityNames, bool notifyClient = true);
-	void removeAbilities(PlayerObject* ghost, const Vector<String>& abilityNames, bool notifyClient = true);
+	void addAbilities(PlayerObject* ghost, Vector<String>& abilityNames, bool notifyClient = true);
+	void removeAbilities(PlayerObject* ghost, Vector<String>& abilityNames, bool notifyClient = true);
 
 	bool awardSkill(const String& skillName, CreatureObject* creature, bool notifyClient = true, bool awardRequiredSkills = false, bool noXpRequired = false);
 	void awardDraftSchematics(Skill* skill, PlayerObject* ghost, bool notifyClient = true);
 
-	bool surrenderSkill(const String& skillName, CreatureObject* creature, bool notifyClient = true, bool verifyFrs = true);
-	void surrenderAllSkills(CreatureObject* creature, bool notifyClient = true, bool removeForceProgression = true);
+	bool surrenderSkill(const String& skillName, CreatureObject* creature, bool notifyClient = true);
+	void surrenderAllSkills(CreatureObject* creature, bool notifyClient = true);
 
 	/**
 	 * Checks if the player can learn the skill (fulfills skill prerequisites, enough skill points and enough XP).
@@ -103,33 +105,31 @@ public:
 	 */
 	bool fulfillsSkillPrerequisites(const String& skillName, CreatureObject* creature);
 
-	bool villageKnightPrereqsMet(CreatureObject* creature, const String& skillToDrop);
+	bool knightPrereqsMet(CreatureObject* creature, const String& skillNameBeingDropped);
 
 	int getForceSensitiveSkillCount(CreatureObject* creature, bool includeNoviceMasterBoxes);
 
 	void updateXpLimits(PlayerObject* ghost);
 
-	Skill* getSkill(const String& skillName) const {
-		return skillMap.get(skillName.hashCode()).get();
+	Skill* getSkill(const String& skillName) {
+		return skillMap.get(skillName.hashCode());
 	}
 
-	Skill* getSkill(uint32 hashCode) const {
-		return skillMap.get(hashCode).get();
+	Skill* getSkill(uint32 hashCode) {
+		return skillMap.get(hashCode);
 	}
 
-	Ability* getAbility(const String& abilityName) const {
-		return abilityMap.get(abilityName).get();
+	Ability* getAbility(const String& abilityName) {
+		return abilityMap.get(abilityName);
 	}
 
 	PerformanceManager* getPerformanceManager() {
 		return performanceManager;
 	}
 
-	inline bool isApprenticeshipEnabled() const {
+	inline bool isApprenticeshipEnabled() {
 		return apprenticeshipEnabled;
 	}
-
-	void removeSkillRelatedMissions(CreatureObject* creature, Skill* skill);
 };
 
 }

@@ -11,8 +11,11 @@
 #include "server/zone/objects/building/BuildingObject.h"
 #include "server/zone/objects/player/sui/colorbox/SuiColorBox.h"
 #include "ArmorObjectMenuComponent.h"
+#include "server/zone/objects/scene/components/ObjectMenuComponent.h"
 #include "server/zone/packets/object/ObjectMenuResponse.h"
+#include "server/zone/objects/player/sui/SuiCallback.h"
 #include "server/zone/objects/player/sui/callbacks/ColorArmorSuiCallback.h"
+#include "server/zone/Zone.h"
 #include "server/zone/ZoneServer.h"
 #include "templates/customization/AssetCustomizationManagerTemplate.h"
 
@@ -23,10 +26,10 @@ void ArmorObjectMenuComponent::fillObjectMenuResponse(SceneObject* sceneObject, 
 
 	ManagedReference<SceneObject*> parent = sceneObject->getParent().get();
 
-	if (parent != nullptr && parent->isCellObject()) {
+	if (parent != NULL && parent->isCellObject()) {
 		ManagedReference<SceneObject*> obj = parent->getParent().get();
 
-		if (obj != nullptr && obj->isBuildingObject()) {
+		if (obj != NULL && obj->isBuildingObject()) {
 			ManagedReference<BuildingObject*> buio = cast<BuildingObject*>(obj.get());
 
 			if (!buio->isOnAdminList(player))
@@ -41,17 +44,18 @@ void ArmorObjectMenuComponent::fillObjectMenuResponse(SceneObject* sceneObject, 
 
 	String text = "Color Change";
 	menuResponse->addRadialMenuItem(81, 3, text);
+	menuResponse->addRadialMenuItem(82, 3, "@sui:color_frame");
 	
     WearableObjectMenuComponent::fillObjectMenuResponse(sceneObject, menuResponse, player); 	
 }
 
 int ArmorObjectMenuComponent::handleObjectMenuSelect(SceneObject* sceneObject, CreatureObject* player, byte selectedID) const {
 
-	if (selectedID == 81) {
+	if (selectedID == 81 || selectedID == 82) {
 		
 		ManagedReference<SceneObject*> parent = sceneObject->getParent().get();
 	
-		if (parent == nullptr)
+		if (parent == NULL)
 			return 0;
 	
 		if (parent->isPlayerCreature()) {
@@ -62,7 +66,7 @@ int ArmorObjectMenuComponent::handleObjectMenuSelect(SceneObject* sceneObject, C
 		if (parent->isCellObject()) {
 			ManagedReference<SceneObject*> obj = parent->getParent().get();
 
-			if (obj != nullptr && obj->isBuildingObject()) {
+			if (obj != NULL && obj->isBuildingObject()) {
 				ManagedReference<BuildingObject*> buio = cast<BuildingObject*>(obj.get());
 
 				if (!buio->isOnAdminList(player))
@@ -77,7 +81,7 @@ int ArmorObjectMenuComponent::handleObjectMenuSelect(SceneObject* sceneObject, C
 
 		ZoneServer* server = player->getZoneServer();
 
-		if (server != nullptr) {		
+		if (server != NULL) {		
 
 		// The color index.
 		String appearanceFilename = sceneObject->getObjectTemplate()->getAppearanceFilename();
@@ -87,7 +91,10 @@ int ArmorObjectMenuComponent::handleObjectMenuSelect(SceneObject* sceneObject, C
 		// The Sui Box.
 		ManagedReference<SuiColorBox*> cbox = new SuiColorBox(player, SuiWindowType::COLOR_ARMOR);
 		cbox->setCallback(new ColorArmorSuiCallback(server));
+		if (selectedID == 81)
 		cbox->setColorPalette(variables.elementAt(1).getKey()); // First one seems to be the frame of it? Skip to 2nd.
+		else
+		cbox->setColorPalette(variables.elementAt(0).getKey());
 		cbox->setUsingObject(sceneObject);
 
 		// Add to player.

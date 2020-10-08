@@ -8,12 +8,13 @@
 #ifndef PATHNODE_H_
 #define PATHNODE_H_
 
-#include "engine/util/u3d/Vector3.h"
+#include "engine/engine.h"
+
 #include "templates/appearance/PathEdge.h"
 
 class PathGraph;
 
-class PathNode {
+class PathNode : public Object {
 public:
 	enum PathNodeType
 	{
@@ -73,14 +74,6 @@ public:
 			radius = 0.5f;
 	}
 
-	bool toBinaryStream(ObjectOutputStream* stream) {
-		return false;
-	}
-
-	bool parseFromBinaryStream(ObjectInputStream* stream) {
-		return false;
-	}
-
 	inline float getX() const {
 		return x;
 	}
@@ -97,7 +90,7 @@ public:
 		return id;
 	}*/
 
-	uint32 getID() const;
+	uint32 getID();
 
 	inline Vector3 getPosition() const {
 		return Vector3(x, y, z);
@@ -111,15 +104,15 @@ public:
 		return type;
 	}
 
-	const Vector<PathNode*>* getNeighbors() const {
+	Vector<PathNode*>* getNeighbors() {
 		return &children;
 	}
 
-	inline int getGlobalGraphNodeID() const {
+	inline int getGlobalGraphNodeID() {
 		return globalGraphNodeID;
 	}
 
-	inline const PathGraph* getPathGraph() const {
+	inline PathGraph* getPathGraph() {
 		return pathGraph;
 	}
 

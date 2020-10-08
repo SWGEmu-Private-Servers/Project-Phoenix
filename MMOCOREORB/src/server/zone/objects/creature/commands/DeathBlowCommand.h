@@ -31,7 +31,7 @@ public:
 
 		ManagedReference<SceneObject*> targetObject = server->getZoneServer()->getObject(target);
 
-		if (creature == targetObject || targetObject == nullptr)
+		if (creature == targetObject || targetObject == NULL)
 			return GENERALERROR;
 
 		//TODO: play coup_de_grace combat animations - ranged_coup_de_grace, melee_coup_de_grace, unarmed_coup_de_grace
@@ -79,10 +79,6 @@ public:
 		} else {
 			return GENERALERROR;
 		}
-
-		StringIdChatParameter params("base_player", "prose_target_dead"); // %TT is no more.
-		params.setTT(targetObject->getDisplayedName());
-		creature->sendSystemMessage(params);
 
 		return SUCCESS;
 	}

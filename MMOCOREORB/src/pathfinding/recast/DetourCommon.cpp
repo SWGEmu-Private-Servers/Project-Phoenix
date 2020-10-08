@@ -19,8 +19,6 @@
 #include "DetourCommon.h"
 #include "DetourMath.h"
 
-#include "system/lang/StringBuffer.h"
-
 //////////////////////////////////////////////////////////////////////////////////////////
 
 void dtClosestPtPointTriangle(float* closest, const float* p,
@@ -355,13 +353,6 @@ void dtRandomPointInConvexPoly(const float* pts, const int npts, float* areas,
 			break;
 		}
 		acc += dacc;
-	}
-
-	if (tri <= 0) {
-		StringBuffer msg;
-		msg << "invalid triangle in dtRandomPointInConvexPoly with tri:"
-			<< tri << " npts:" << npts << " s:" << s << " t:" << t << " acc:" << acc << " u:" << u << " thr:" << thr;
-		throw sys::lang::Exception(msg.toString());
 	}
 	
 	float v = dtMathSqrtf(t);
